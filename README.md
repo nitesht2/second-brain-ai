@@ -20,7 +20,7 @@
 
 ![Obsidian Graph View](docs/screenshots/graph-view.png)
 
-*Your knowledge graph, auto-generated. Drop clips in → watch nodes appear.*
+*Your knowledge graph after a single ingest session — 45 wiki entries, all auto-connected.*
 
 </div>
 
@@ -31,7 +31,6 @@
 - [What It Does](#-what-it-does)
 - [Who It's For](#-who-its-for)
 - [Quick Start](#-quick-start-30-seconds)
-- [What Makes This Different](#-what-makes-this-different)
 - [Prerequisites](#-prerequisites)
 - [Full Setup](#-full-setup-detailed)
 - [Usage](#-usage)
@@ -112,26 +111,6 @@ That's it. Install the [Web Clipper](https://obsidian.md/clipper), point it at t
 
 ---
 
-## 🆚 What Makes This Different
-
-This repo extends [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain) with a fully automated, zero-cost local pipeline.
-
-| Feature | Original | This Repo |
-|---|:---:|:---:|
-| Claude Code slash commands | ✅ | ✅ |
-| Obsidian vault structure | ✅ | ✅ |
-| Setup wizard `/second-brain` | ✅ | ✅ |
-| `wiki/synthesis/` tier | ❌ | ✅ |
-| **Free local AI auto-ingest (Ollama)** | ❌ | ✅ |
-| **macOS launchd scheduler** | ❌ | ✅ |
-| **Runs every 2 days automatically** | ❌ | ✅ |
-| **Catches up if Mac was asleep** | ❌ | ✅ |
-| **Dry-run mode** | ❌ | ✅ |
-| **Lint with auto-fix suggestions** | ❌ | ✅ |
-| **qwen3 thinking model compatibility** | ❌ | ✅ |
-
----
-
 ## 📦 Prerequisites
 
 | Tool | Purpose | Install |
@@ -198,7 +177,6 @@ Structure created:
 ### Step 5 — Install Ollama + pull a model
 
 ```bash
-# After installing Ollama from https://ollama.com:
 ollama pull gemma3:4b        # recommended, ~3GB
 ollama pull qwen3.5:9b       # optional, higher quality, ~7GB
 ```
@@ -209,20 +187,11 @@ ollama pull qwen3.5:9b       # optional, higher quality, ~7GB
 cp claude-commands/*.md ~/.claude/commands/
 ```
 
-In Claude Code you now have:
-
-| Command | What it does |
-|---|---|
-| `/second-brain` | Setup wizard |
-| `/second-brain-ingest` | Process raw clips with Claude Sonnet |
-| `/second-brain-query [question]` | Cited answers from your wiki |
-| `/second-brain-lint` | Health check report |
-
 ### Step 7 — Set up auto-ingest
 
 ```bash
 cp auto_ingest.py ~/SecondBrain/
-python3 ~/SecondBrain/auto_ingest.py --dry-run   # test
+python3 ~/SecondBrain/auto_ingest.py --dry-run
 cp launchd/com.nitesh.secondbrain-ingest.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
 launchctl list | grep secondbrain
@@ -254,46 +223,23 @@ Open Obsidian — new nodes appear in the graph.
 
 ## 💬 Usage
 
-### Ask questions
+Four slash commands in Claude Code:
 
-```
-/second-brain-query What is the best strategy to grow on LinkedIn?
-/second-brain-query What AI video generation tools have I saved?
-/second-brain-query Who are the people I've been following?
-```
+| Command | What it does | Uses tokens? |
+|---|---|:---:|
+| `/second-brain` | Setup wizard — checks your configuration | No |
+| `/second-brain-ingest` | Process raw clips with Claude Sonnet (best quality) | Yes |
+| `/second-brain-query [question]` | Ask questions, get cited answers from your wiki | Yes |
+| `/second-brain-lint` | Health check: broken links, orphans, stubs, gaps | Yes |
 
-Claude searches your wiki and returns a cited answer, saved to `outputs/`.
+**Plus the free local script:**
 
-![Query Example](docs/screenshots/query-result.png)
-
-### Run a lint check
-
-```
-/second-brain-lint
+```bash
+python3 ~/SecondBrain/auto_ingest.py           # run manually
+python3 ~/SecondBrain/auto_ingest.py --dry-run # preview only
 ```
 
-Output:
-```
-Total entries:        45
-Broken wikilinks:     15 → suggestions below
-Stubs to expand:      1
-
-## Errors (must fix)
-- [ ] [[Multi-Agent Systems]] — referenced 10x, no entry exists
-
-## Suggestions
-- Connect [[claude-code]] to [[Anthropic]] — natural anchor
-```
-
-![Lint Report](docs/screenshots/lint-report.png)
-
-### Manual ingest (Claude Sonnet quality)
-
-```
-/second-brain-ingest
-```
-
-For important research. Uses Claude Code tokens. Save for content that matters.
+The local script runs automatically every 2 days — you rarely need to run it by hand.
 
 ---
 
@@ -380,13 +326,14 @@ second-brain-ai/
 │   └── com.nitesh.secondbrain-ingest.plist
 │
 ├── docs/
-│   └── screenshots/                              ← drop your screenshots here
+│   └── screenshots/
+│       └── graph-view.png                        ← the hero image
 │
 └── vault-template/                               ← copy into ~/SecondBrain/
-    ├── CLAUDE.md                                 ← vault rules for Claude
+    ├── CLAUDE.md
     ├── wiki/
-    │   ├── index.md                              ← master index
-    │   ├── log.md                                ← change log
+    │   ├── index.md
+    │   ├── log.md
     │   ├── entities/
     │   ├── concepts/
     │   ├── sources/
