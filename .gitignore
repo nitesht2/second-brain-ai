@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Obsidian
+.obsidian/
+
+# Personal vault content — never commit your actual notes
+wiki/
+raw/
+outputs/
+*.last_ingest_run
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Logs
+*.log
+ingest-daemon.log

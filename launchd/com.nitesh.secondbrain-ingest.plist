@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nitesh.secondbrain-ingest</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>/Users/nitesh/SecondBrain/auto_ingest.py</string>
+    </array>
+
+    <!-- Fire daily at 4:07am. The script itself skips if < 48h since last run. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>7</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nitesh/SecondBrain/outputs/ingest-daemon.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nitesh/SecondBrain/outputs/ingest-daemon.log</string>
+
+    <!-- Only run if Ollama is reachable — script handles gracefully if not -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
