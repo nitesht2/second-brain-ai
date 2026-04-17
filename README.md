@@ -89,6 +89,24 @@ This tool is for anyone who reads a lot online and wants their notes to actually
 
 ---
 
+## 🔮 What is Obsidian?
+
+[**Obsidian**](https://obsidian.md) is a free, local-first Markdown editor that turns your notes into a visual knowledge graph. Every time you write `[[Another Note]]` in a file, Obsidian creates a link between them — and the **Graph View** renders all those links as an interactive web of nodes.
+
+That's why this project uses Obsidian: your Second Brain isn't just a folder of files, it's a **visual, explorable map** of everything you've learned. The screenshot at the top of this README is a real Obsidian Graph View from the first run of this system.
+
+**Key things to know:**
+- ✅ **Free** — no subscription required for local use
+- ✅ **Your data stays on your Mac** — no cloud sync unless you opt in
+- ✅ **Plain Markdown files** — works with any editor if you ever leave
+- ✅ **Works offline** — everything runs locally
+
+**👉 Download:** [https://obsidian.md](https://obsidian.md)
+
+Available for macOS, Windows, Linux, iOS, and Android.
+
+---
+
 ## ⚡ Quick Start (30 seconds)
 
 **Requires:** macOS, [Obsidian](https://obsidian.md), [Ollama](https://ollama.com), [Claude Code](https://claude.ai/code)
@@ -113,12 +131,14 @@ That's it. Install the [Web Clipper](https://obsidian.md/clipper), point it at t
 
 ## 📦 Prerequisites
 
-| Tool | Purpose | Install |
+Install these four free tools before starting:
+
+| Tool | What it is | Download |
 |---|---|---|
-| **Obsidian** | Markdown editor with graph view | [obsidian.md](https://obsidian.md) |
-| **Ollama** | Local AI runtime (free) | [ollama.com](https://ollama.com) |
-| **Claude Code** | Slash commands | [claude.ai/code](https://claude.ai/code) |
-| **Web Clipper** | Chrome/Firefox extension | [obsidian.md/clipper](https://obsidian.md/clipper) |
+| 🔮 **Obsidian** | Free Markdown editor with graph view — **this is where you'll see your knowledge map** | **[→ obsidian.md](https://obsidian.md)** |
+| 🤖 **Ollama** | Runs AI models locally on your Mac (fully free, no API key) | **[→ ollama.com](https://ollama.com)** |
+| ✨ **Claude Code** | Anthropic's AI assistant that powers the slash commands | **[→ claude.ai/code](https://claude.ai/code)** |
+| 📎 **Obsidian Web Clipper** | Chrome/Firefox extension that saves webpages into your vault | **[→ obsidian.md/clipper](https://obsidian.md/clipper)** |
 
 > **macOS required** for the auto-scheduler. Linux: use cron. Windows: see [Roadmap](#️-roadmap).
 
