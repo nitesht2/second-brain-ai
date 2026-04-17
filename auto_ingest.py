@@ -12,8 +12,9 @@ Supported input formats:
            (transcript fetched via youtube-transcript-api)
 
 Open-source dependencies used by this script:
-  - Ollama              (local LLM runtime) — https://github.com/ollama/ollama
-  - pypdf               (PDF text extraction) — https://github.com/py-pdf/pypdf
+  - Ollama              (local LLM runtime)    — https://github.com/ollama/ollama
+  - poppler (pdftotext) (PDF text extraction)  — https://poppler.freedesktop.org
+  - pypdf               (PDF fallback)         — https://github.com/py-pdf/pypdf
   - youtube-transcript-api (YouTube transcripts) — https://github.com/jdepoix/youtube-transcript-api
 
 Usage:
@@ -94,14 +95,38 @@ def get_raw_files():
 
 
 def extract_pdf_text(pdf_path) -> str:
-    """Extract all text from a PDF. Uses pypdf (open-source, MIT licensed).
-    https://github.com/py-pdf/pypdf
+    """Extract all text from a PDF.
+
+    Tries in order:
+      1. pdftotext (poppler)  — industry standard, most accurate, fastest
+         https://poppler.freedesktop.org  — install: `brew install poppler`
+      2. pypdf (pure Python)  — fallback, no external dependency
+         https://github.com/py-pdf/pypdf  — install: `pip3 install pypdf`
     """
+    import shutil as _sh
+    import subprocess
+
+    # Try 1: pdftotext (preferred — industry standard, poppler-based)
+    if _sh.which("pdftotext"):
+        try:
+            result = subprocess.run(
+                ["pdftotext", "-layout", str(pdf_path), "-"],
+                capture_output=True, text=True, timeout=60
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return f"# {pdf_path.stem}\n\n{result.stdout}"
+            else:
+                print(f"  ⚠ pdftotext returned empty — falling back to pypdf")
+        except Exception as e:
+            print(f"  ⚠ pdftotext failed: {e} — falling back to pypdf")
+
+    # Try 2: pypdf (pure Python fallback)
     try:
         import pypdf
     except ImportError:
-        print("  ⚠ pypdf not installed. Install with:")
-        print("    pip3 install --break-system-packages pypdf")
+        print("  ⚠ No PDF extractor available. Install either:")
+        print("    brew install poppler                            (recommended)")
+        print("    pip3 install --break-system-packages pypdf      (fallback)")
         return ""
     try:
         reader = pypdf.PdfReader(str(pdf_path))

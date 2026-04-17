@@ -80,7 +80,7 @@ Drop any of these in `~/SecondBrain/raw/` and the next ingest picks them up:
 | Format | Example | How it's processed |
 |---|---|---|
 | **`.md`** | Web Clipper output, notes | Read as-is |
-| **`.pdf`** | Papers, articles, resumes | Text extracted via [pypdf](https://github.com/py-pdf/pypdf) |
+| **`.pdf`** | Papers, articles, resumes | Text extracted via [pdftotext (poppler)](https://poppler.freedesktop.org), falls back to [pypdf](https://github.com/py-pdf/pypdf) |
 | **`.txt` (YouTube URL)** | `video.txt` with a YouTube URL on the first line | Transcript fetched via [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) |
 | **`.txt` (plain text)** | Any text file | Read as-is |
 
@@ -261,10 +261,14 @@ cp claude-commands/*.md ~/.claude/commands/
 
 ### Step 7 — Set up auto-ingest
 
-Install the two open-source libraries needed for PDF and YouTube support:
+Install the open-source tools needed for PDF and YouTube support:
 
 ```bash
-pip3 install --break-system-packages pypdf youtube-transcript-api
+# Industry-standard PDF extractor (recommended)
+brew install poppler
+
+# Python libraries for YouTube transcripts and PDF fallback
+pip3 install --break-system-packages youtube-transcript-api pypdf
 ```
 
 Then deploy the script and scheduler:
@@ -474,15 +478,15 @@ launchd only catches up from sleep. A full shutdown misses the run. It fires aga
 <details>
 <summary><b>PDF extraction fails or returns garbage text</b></summary>
 
-`pypdf` works great on digital PDFs but struggles with scanned (image-only) PDFs. Fallback options:
+The script uses `pdftotext` (poppler) as the primary extractor with `pypdf` as fallback. If both fail:
 
 | Method | Install | When to use |
 |---|---|---|
-| **pdftotext** (poppler) | `brew install poppler` | More accurate on complex layouts |
-| **pdfplumber** | `pip3 install pdfplumber` | Better at tables |
-| **Tesseract OCR** | `brew install tesseract` | Scanned/image-only PDFs |
+| **pdfplumber** | `pip3 install pdfplumber` | Better at complex tables |
+| **Tesseract OCR** | `brew install tesseract` | Scanned/image-only PDFs (no text layer) |
+| **Manual conversion** | Any Mac preview → Export as text | Quick one-off conversion |
 
-Swap it in `auto_ingest.py` inside `extract_pdf_text()`. Or convert the PDF to markdown manually with any tool and drop the `.md` file in `raw/`.
+Swap it in `auto_ingest.py` inside `extract_pdf_text()`. Or just save the PDF content as a `.md` file in `raw/`.
 </details>
 
 <details>
@@ -545,7 +549,8 @@ Built by [@NiteshTechAI](https://x.com/NiteshTechAI)
 - [Ollama](https://github.com/ollama/ollama) — local LLM runtime (MIT)
 - [Gemma 3](https://huggingface.co/google/gemma-3-4b-it) — Google's open model family
 - [Qwen 3.5](https://github.com/QwenLM/Qwen) — Alibaba's open model family
-- [pypdf](https://github.com/py-pdf/pypdf) — PDF text extraction (MIT)
+- [Poppler (pdftotext)](https://poppler.freedesktop.org) — PDF extraction, industry standard (GPL-2)
+- [pypdf](https://github.com/py-pdf/pypdf) — PDF fallback (MIT)
 - [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) — YouTube transcript fetching (MIT)
 - [Obsidian](https://obsidian.md) — local-first Markdown editor
 
