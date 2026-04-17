@@ -50,9 +50,9 @@
 ## 🎯 What It Does
 
 ```
-📎 Clip article with Obsidian Web Clipper
+📎 Clip articles, drop PDFs, or save YouTube URLs
                ↓
-📁 Lands in ~/SecondBrain/raw/
+📁 Lands in ~/SecondBrain/raw/  (.md, .pdf, or .txt with YouTube URL)
                ↓
 ⏰ Every 2 days at 4am  (automatic, macOS launchd)
                ↓
@@ -72,6 +72,19 @@
 ```
 
 **Zero cost for daily processing. Zero manual effort. If your Mac was asleep — it catches up automatically.**
+
+### 📥 Supported Input Formats
+
+Drop any of these in `~/SecondBrain/raw/` and the next ingest picks them up:
+
+| Format | Example | How it's processed |
+|---|---|---|
+| **`.md`** | Web Clipper output, notes | Read as-is |
+| **`.pdf`** | Papers, articles, resumes | Text extracted via [pypdf](https://github.com/py-pdf/pypdf) |
+| **`.txt` (YouTube URL)** | `video.txt` with a YouTube URL on the first line | Transcript fetched via [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) |
+| **`.txt` (plain text)** | Any text file | Read as-is |
+
+Both libraries are fully open-source (MIT licensed).
 
 ---
 
@@ -247,6 +260,14 @@ cp claude-commands/*.md ~/.claude/commands/
 ```
 
 ### Step 7 — Set up auto-ingest
+
+Install the two open-source libraries needed for PDF and YouTube support:
+
+```bash
+pip3 install --break-system-packages pypdf youtube-transcript-api
+```
+
+Then deploy the script and scheduler:
 
 ```bash
 cp auto_ingest.py ~/SecondBrain/
@@ -450,6 +471,44 @@ Local 4B models sometimes use underscores. Rename in Obsidian or use `/second-br
 launchd only catches up from sleep. A full shutdown misses the run. It fires again at the next scheduled time.
 </details>
 
+<details>
+<summary><b>PDF extraction fails or returns garbage text</b></summary>
+
+`pypdf` works great on digital PDFs but struggles with scanned (image-only) PDFs. Fallback options:
+
+| Method | Install | When to use |
+|---|---|---|
+| **pdftotext** (poppler) | `brew install poppler` | More accurate on complex layouts |
+| **pdfplumber** | `pip3 install pdfplumber` | Better at tables |
+| **Tesseract OCR** | `brew install tesseract` | Scanned/image-only PDFs |
+
+Swap it in `auto_ingest.py` inside `extract_pdf_text()`. Or convert the PDF to markdown manually with any tool and drop the `.md` file in `raw/`.
+</details>
+
+<details>
+<summary><b>YouTube transcript fetch fails</b></summary>
+
+YouTube occasionally blocks the scraping endpoint `youtube-transcript-api` uses, or the video has no captions. Fallback options:
+
+| Method | Install | Notes |
+|---|---|---|
+| **yt-dlp** | `brew install yt-dlp` | Run `yt-dlp --write-auto-sub --skip-download URL` — saves `.vtt` file |
+| **OpenAI Whisper (local)** | `pip3 install openai-whisper` | Transcribes any video locally, free, ~1GB model |
+| **Manual paste** | None | Copy the transcript from YouTube's UI, paste into a `.md` file |
+
+The simplest fallback: copy the transcript manually from YouTube's "Show transcript" button and save it as a `.md` file in `raw/`.
+</details>
+
+<details>
+<summary><b>PDF or YouTube libraries not installed</b></summary>
+
+```bash
+pip3 install --break-system-packages pypdf youtube-transcript-api
+```
+
+The script will tell you exactly which one is missing in its error output.
+</details>
+
 ---
 
 ## 🗺️ Roadmap
@@ -458,7 +517,7 @@ launchd only catches up from sleep. A full shutdown misses the run. It fires aga
 - [ ] Linux cron setup guide
 - [ ] Auto-update `wiki/index.md` after every ingest
 - [ ] `wiki/synthesis/` auto-generation
-- [ ] PDF + YouTube transcript ingestion
+- [x] PDF + YouTube transcript ingestion ✅
 - [ ] Discord/Slack notification on ingest completion
 - [ ] Web dashboard to browse vault without Obsidian
 
@@ -476,11 +535,19 @@ Windows/Linux support, better local model prompts, and new ingest sources especi
 
 Built by [@NiteshTechAI](https://x.com/NiteshTechAI)
 
-Standing on the shoulders of:
-- [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain) — original system
-- [swyx/brain](https://github.com/swyxio/brain) — public vault inspiration
+**Inspired by:**
+- [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain) — original system and slash commands
+- [swyx/brain](https://github.com/swyxio/brain) — public Obsidian vault
 - [Andrej Karpathy](https://x.com/karpathy) — LLM-Wiki pattern
 - [Ruben Hassid](https://ruben.substack.com) — AI productivity workflows
+
+**Powered by these open-source projects:**
+- [Ollama](https://github.com/ollama/ollama) — local LLM runtime (MIT)
+- [Gemma 3](https://huggingface.co/google/gemma-3-4b-it) — Google's open model family
+- [Qwen 3.5](https://github.com/QwenLM/Qwen) — Alibaba's open model family
+- [pypdf](https://github.com/py-pdf/pypdf) — PDF text extraction (MIT)
+- [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) — YouTube transcript fetching (MIT)
+- [Obsidian](https://obsidian.md) — local-first Markdown editor
 
 ---
 
