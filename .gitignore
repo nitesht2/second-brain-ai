@@ -7,10 +7,14 @@
 .obsidian/
 
 # Personal vault content — never commit your actual notes
-wiki/
-raw/
-outputs/
+# (root-level only, vault-template/ is still tracked)
+/wiki/
+/raw/
+/outputs/
 *.last_ingest_run
+
+# Allow vault-template contents
+!vault-template/
 
 # Python
 __pycache__/
