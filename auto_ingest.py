@@ -2,8 +2,19 @@
 """
 Second Brain Auto-Ingest via Local LLM (Ollama)
 
-Scans ~/SecondBrain/raw/ for unprocessed .md files and ingests them
-using a local model (qwen3.5:9b) — zero Claude Code tokens.
+Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
+using a local model (Gemma 3 / Qwen 3.5) — zero Claude Code tokens.
+
+Supported input formats:
+  .md    → markdown clips (Web Clipper output)
+  .pdf   → PDF documents (text extracted via pypdf)
+  .txt   → plain text, OR a YouTube URL on the first line
+           (transcript fetched via youtube-transcript-api)
+
+Open-source dependencies used by this script:
+  - Ollama              (local LLM runtime) — https://github.com/ollama/ollama
+  - pypdf               (PDF text extraction) — https://github.com/py-pdf/pypdf
+  - youtube-transcript-api (YouTube transcripts) — https://github.com/jdepoix/youtube-transcript-api
 
 Usage:
     python3 auto_ingest.py           # normal run
@@ -62,13 +73,106 @@ def record_run():
     LAST_RUN_FILE.write_text(str(time.time()))
 
 
+SUPPORTED_EXTENSIONS = {".md", ".pdf", ".txt"}
+
+
 def get_raw_files():
-    """Return all .md files in raw/ that are not inside processed/."""
+    """Return all supported files in raw/ that are not inside processed/.
+
+    Supported types:
+      .md   → plain markdown (Web Clipper output)
+      .pdf  → extracted as text via pypdf
+      .txt  → plain text, OR a single YouTube URL (transcript is fetched)
+    """
     files = []
-    for p in RAW_DIR.rglob("*.md"):
-        if "processed" not in p.parts:
+    for p in RAW_DIR.rglob("*"):
+        if not p.is_file() or "processed" in p.parts:
+            continue
+        if p.suffix.lower() in SUPPORTED_EXTENSIONS:
             files.append(p)
     return sorted(files)
+
+
+def extract_pdf_text(pdf_path) -> str:
+    """Extract all text from a PDF. Uses pypdf (open-source, MIT licensed).
+    https://github.com/py-pdf/pypdf
+    """
+    try:
+        import pypdf
+    except ImportError:
+        print("  ⚠ pypdf not installed. Install with:")
+        print("    pip3 install --break-system-packages pypdf")
+        return ""
+    try:
+        reader = pypdf.PdfReader(str(pdf_path))
+        parts = [f"# {pdf_path.stem}\n"]
+        for page in reader.pages:
+            text = page.extract_text() or ""
+            if text.strip():
+                parts.append(text)
+        return "\n\n".join(parts)
+    except Exception as e:
+        print(f"  ⚠ PDF extraction failed: {e}")
+        return ""
+
+
+def extract_video_id(url: str):
+    """Pull a YouTube video ID out of any common URL format."""
+    patterns = [
+        r'(?:v=|/)([0-9A-Za-z_-]{11})(?:[?&#]|$)',
+        r'youtu\.be/([0-9A-Za-z_-]{11})',
+    ]
+    for pat in patterns:
+        m = re.search(pat, url)
+        if m:
+            return m.group(1)
+    return None
+
+
+def fetch_youtube_transcript(url: str) -> str:
+    """Fetch a YouTube video transcript. Uses youtube-transcript-api (open-source, MIT).
+    https://github.com/jdepoix/youtube-transcript-api
+    """
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+    except ImportError:
+        print("  ⚠ youtube-transcript-api not installed. Install with:")
+        print("    pip3 install --break-system-packages youtube-transcript-api")
+        return ""
+    video_id = extract_video_id(url)
+    if not video_id:
+        print(f"  ⚠ Could not extract video ID from: {url}")
+        return ""
+    try:
+        # v1.x API: instantiate, then fetch() returns FetchedTranscript (iterable of snippets)
+        api = YouTubeTranscriptApi()
+        fetched = api.fetch(video_id)
+        body = "\n".join(snippet.text for snippet in fetched)
+        return f"# YouTube Transcript\n\nSource: {url}\n\n{body}"
+    except Exception as e:
+        print(f"  ⚠ Transcript fetch failed for {video_id}: {e}")
+        return ""
+
+
+def extract_content(file_path) -> str:
+    """Read file content, converting PDF and YouTube-URL txt files to markdown on the fly."""
+    suffix = file_path.suffix.lower()
+
+    if suffix == ".md":
+        return file_path.read_text(encoding="utf-8", errors="ignore")
+
+    if suffix == ".pdf":
+        return extract_pdf_text(file_path)
+
+    if suffix == ".txt":
+        raw = file_path.read_text(encoding="utf-8", errors="ignore").strip()
+        if "youtube.com/watch" in raw or "youtu.be/" in raw:
+            # First line is treated as the URL
+            url = raw.splitlines()[0].strip()
+            return fetch_youtube_transcript(url)
+        return raw
+
+    return ""
 
 
 def get_existing_wiki_stems():
@@ -257,8 +361,16 @@ def main():
     session_log = []
 
     for raw_file in raw_files:
-        print(f"Processing: {raw_file.name}")
-        content = raw_file.read_text(encoding="utf-8", errors="ignore")
+        kind = {
+            ".md": "markdown",
+            ".pdf": "PDF",
+            ".txt": "text/YouTube URL",
+        }.get(raw_file.suffix.lower(), "unknown")
+        print(f"Processing [{kind}]: {raw_file.name}")
+        content = extract_content(raw_file)
+        if not content.strip():
+            print("  ⚠ No content extracted — skipping.")
+            continue
 
         try:
             response = call_ollama(build_prompt(content, raw_file.name, existing))
