@@ -1,11 +1,13 @@
 <div align="center">
 
-# 🧠 Second Brain AI
+# 🧠 AI-Powered Second Brain
 
 ### Clip anything. Wake up to a connected knowledge graph.
 
-**An automated personal knowledge base built on Obsidian + Claude Code + free local AI.**
+**An AI-Powered Second Brain built on Obsidian + Claude Code + free local AI (Ollama + Gemma 3).**
 **You save articles. The AI organizes them into a searchable wiki while you sleep.**
+
+> Inspired by [Andrej Karpathy's LLM-Wiki pattern](https://github.com/karpathy) — *"the LLM is the librarian, you're the curator."*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Ollama](https://img.shields.io/badge/Runs%20on-Ollama-black)](https://ollama.com)
@@ -104,6 +106,43 @@ That's why this project uses Obsidian: your Second Brain isn't just a folder of 
 **👉 Download:** [https://obsidian.md](https://obsidian.md)
 
 Available for macOS, Windows, Linux, iOS, and Android.
+
+---
+
+## 🤖 What Local LLM Does This Use?
+
+This project uses **[Ollama](https://ollama.com)** to run open-source AI models locally on your Mac. **Zero cost, zero API keys, zero data sent to any cloud.** Everything stays on your machine.
+
+**We tested and recommend these models:**
+
+| Model | Size | Speed | Quality | Best for |
+|---|---|---|---|---|
+| **`gemma3:4b`** ✅ *default* | ~3GB | Fast (~30s per clip) | Good structured output | Daily clips, most users |
+| `qwen3.5:4b` | ~3GB | Fast | Thinking model (uses `thinking` field) | Experimentation |
+| `qwen3.5:9b` | ~7GB | Slower (~60s per clip) | Best quality, better connections | Power users with 16GB+ RAM |
+
+**Why Gemma 3 as default?**
+- Fast enough to process many clips in one overnight run
+- Reliable at following structured output format (needed for wiki entries with `[[wikilinks]]`)
+- Only 3GB — fits comfortably alongside your other apps
+- Made by Google, actively maintained, fully open-source
+
+**How much RAM does it use?**
+- Gemma 3 4B → ~3-4GB while running
+- Qwen 3.5 9B → ~7-8GB while running
+
+Any M-series MacBook with 16GB+ RAM handles these comfortably.
+
+```bash
+# Install your preferred model
+ollama pull gemma3:4b          # recommended
+ollama pull qwen3.5:9b         # optional, better quality
+```
+
+Swap models anytime by editing one line in `auto_ingest.py`:
+```python
+MODEL = "gemma3:4b"    # or "qwen3.5:9b" or "qwen3.5:4b"
+```
 
 ---
 
@@ -324,46 +363,49 @@ launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
 
 ## 📁 Repo Structure
 
-<details>
-<summary><b>Expand file tree</b></summary>
-
 ```
 second-brain-ai/
 ├── README.md                                     ← you are here
-├── setup.sh                                      ← one-command install
-├── auto_ingest.py                                ← local AI ingest script
-├── CONTRIBUTING.md
-├── LICENSE
+├── setup.sh                                      ← one-command installer (runs all setup steps)
+├── auto_ingest.py                                ← local AI ingest script (Ollama + Gemma 3)
+├── CONTRIBUTING.md                               ← how to contribute
+├── LICENSE                                       ← MIT
 ├── .gitignore
 │
-├── claude-commands/                              ← copy to ~/.claude/commands/
+├── claude-commands/                              ← copy these to ~/.claude/commands/
 │   ├── second-brain.md                           ← /second-brain (setup wizard)
-│   ├── second-brain-ingest.md                    ← /second-brain-ingest
-│   ├── second-brain-query.md                     ← /second-brain-query
-│   └── second-brain-lint.md                      ← /second-brain-lint
+│   ├── second-brain-ingest.md                    ← /second-brain-ingest (Claude Sonnet quality)
+│   ├── second-brain-query.md                     ← /second-brain-query (ask questions)
+│   └── second-brain-lint.md                      ← /second-brain-lint (health check)
 │
-├── launchd/                                      ← macOS scheduler
-│   └── com.nitesh.secondbrain-ingest.plist
+├── launchd/                                      ← macOS auto-scheduler
+│   └── com.nitesh.secondbrain-ingest.plist       ← runs every 2 days at 4:07am
 │
 ├── docs/
 │   └── screenshots/
-│       └── graph-view.png                        ← the hero image
+│       ├── README.md                             ← guide for adding screenshots
+│       └── graph-view.png                        ← hero image (Obsidian Graph View)
 │
-└── vault-template/                               ← copy into ~/SecondBrain/
-    ├── CLAUDE.md
+└── vault-template/                               ← copy everything inside into ~/SecondBrain/
+    ├── CLAUDE.md                                 ← vault instructions for Claude
     ├── wiki/
-    │   ├── index.md
-    │   ├── log.md
-    │   ├── entities/
-    │   ├── concepts/
-    │   ├── sources/
-    │   └── synthesis/
-    ├── raw/
-    │   └── processed/
-    └── outputs/
+    │   ├── index.md                              ← master index of entries
+    │   ├── log.md                                ← ingest change log
+    │   ├── entities/                             ← people, companies, tools
+    │   │   └── .gitkeep
+    │   ├── concepts/                             ← ideas, frameworks, strategies
+    │   │   └── .gitkeep
+    │   ├── sources/                              ← one summary per clip
+    │   │   └── .gitkeep
+    │   └── synthesis/                            ← cross-topic insights
+    │       └── .gitkeep
+    ├── raw/                                      ← clips land here
+    │   ├── .gitkeep
+    │   └── processed/                            ← moved here after processing
+    │       └── .gitkeep
+    └── outputs/                                  ← query results and lint reports
+        └── .gitkeep
 ```
-
-</details>
 
 ---
 
