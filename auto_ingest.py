@@ -6,7 +6,7 @@ Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
 using a local model (Gemma 3 / Qwen 3.5) — zero Claude Code tokens.
 
 Supported input formats:
-  .md    → markdown clips (Web Clipper output)
+  .md    → markdown clips (Web Clipper output) — best for social media (TikTok, Instagram, Twitter)
   .pdf   → PDF documents (text extracted via pypdf)
   .txt   → plain text, OR a YouTube URL on the first line
            (transcript fetched via youtube-transcript-api)
@@ -182,7 +182,12 @@ def fetch_youtube_transcript(url: str) -> str:
 
 
 def extract_content(file_path) -> str:
-    """Read file content, converting PDF and YouTube-URL txt files to markdown on the fly."""
+    """Read file content, converting PDF and YouTube-URL txt files to markdown on the fly.
+
+    For TikTok, Instagram, and Twitter — use Obsidian Web Clipper instead.
+    These platforms block programmatic access. Web Clipper reads what's in
+    your browser session and saves it as .md automatically.
+    """
     suffix = file_path.suffix.lower()
 
     if suffix == ".md":
@@ -194,7 +199,6 @@ def extract_content(file_path) -> str:
     if suffix == ".txt":
         raw = file_path.read_text(encoding="utf-8", errors="ignore").strip()
         if "youtube.com/watch" in raw or "youtu.be/" in raw:
-            # First line is treated as the URL
             url = raw.splitlines()[0].strip()
             return fetch_youtube_transcript(url)
         return raw
