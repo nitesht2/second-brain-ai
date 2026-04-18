@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Second Brain Auto-Ingest via Local LLM (Ollama)
+Second Brain Auto-Ingest
 
 Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
-using a local model (Gemma 3 / Qwen 3.5) — zero Claude Code tokens.
+using Ollama (free, local) or Kimi K2 API (paid, better quality).
+
+Provider selection (default: ollama):
+    export SECOND_BRAIN_PROVIDER=kimi      # use Kimi K2, auto-fallback to Gemma 3
+    export SECOND_BRAIN_PROVIDER=ollama    # local Gemma 3 only (default)
 
 Supported input formats:
   .md    → markdown clips (Web Clipper output) — best for social media (TikTok, Instagram, Twitter)
@@ -50,6 +54,21 @@ MAX_TOKENS      = 3000
 RAW_CHUNK       = 3500                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
 MIN_HOURS       = 48                  # skip if last run was less than this many hours ago
+
+# ── Provider config ───────────────────────────────────────────────────────────
+# Switch between local Ollama (free) and Kimi K2 API (~$0.005/run, better quality)
+#
+#   To use Kimi:
+#     export SECOND_BRAIN_PROVIDER=kimi
+#     export KIMI_API_KEY=your_key_here
+#
+#   To use Ollama (default, free):
+#     export SECOND_BRAIN_PROVIDER=ollama   (or just don't set it)
+
+PROVIDER        = os.environ.get("SECOND_BRAIN_PROVIDER", "ollama").lower()
+KIMI_API_KEY    = os.environ.get("KIMI_API_KEY", "")
+KIMI_MODEL      = "kimi-k2-0905-preview"
+KIMI_BASE_URL   = "https://api.moonshot.ai/v1/chat/completions"
 
 DRY_RUN     = "--dry-run" in sys.argv
 
@@ -225,6 +244,8 @@ def extract_content(file_path) -> str:
             )
             if source_match:
                 url = source_match.group(1).strip()
+
+                # YouTube — fetch transcript via API (no browser needed)
                 video_id = extract_video_id(url)
                 if video_id:
                     if is_already_ingested(video_id):
@@ -235,7 +256,13 @@ def extract_content(file_path) -> str:
                     if transcript:
                         body = raw[fm_match.end():].strip()
                         return f"{body}\n\n{transcript}" if body else transcript
-        # Fallback: return full file as-is (articles, notes, non-YouTube clips)
+
+                # TikTok / Instagram — Web Clipper already captured description,
+                # hashtags, and caption. Use that directly. For full transcript,
+                # run: python3 auto_ingest.py --save <URL>
+                elif any(d in url for d in ("tiktok.com", "instagram.com", "instagr.am")):
+                    print(f"  ▶ TikTok/Instagram clip detected — using Web Clipper content.")
+        # Fallback: return full file as-is (articles, notes, non-video clips)
         return raw
 
     if suffix == ".pdf":
@@ -287,6 +314,53 @@ def call_ollama(prompt: str) -> str:
             return text
     except urllib.error.URLError as e:
         raise RuntimeError(f"Ollama not reachable: {e}")
+
+
+def call_kimi(prompt: str) -> str:
+    """Call Kimi K2 API (OpenAI-compatible). ~$0.005 per ingest run, better quality than Gemma 3."""
+    if not KIMI_API_KEY:
+        raise RuntimeError("KIMI_API_KEY not set. Run: export KIMI_API_KEY=your_key")
+
+    payload = json.dumps({
+        "model": KIMI_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS,
+    }).encode()
+
+    req = urllib.request.Request(
+        KIMI_BASE_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {KIMI_API_KEY}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            body = json.loads(resp.read())
+            return body["choices"][0]["message"]["content"].strip()
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Kimi API not reachable: {e}")
+    except (KeyError, IndexError) as e:
+        raise RuntimeError(f"Unexpected Kimi API response: {e}")
+
+
+def call_llm(prompt: str) -> str:
+    """Route to Kimi or Ollama based on SECOND_BRAIN_PROVIDER env var.
+
+    If SECOND_BRAIN_PROVIDER=kimi and the Kimi call fails for any reason,
+    automatically falls back to local Ollama (Gemma 3) so ingest never
+    silently fails just because the API is down.
+    """
+    if PROVIDER == "kimi":
+        try:
+            return call_kimi(prompt)
+        except RuntimeError as e:
+            print(f"  ⚠ Kimi failed ({e}) — falling back to Ollama/Gemma 3")
+            return call_ollama(prompt)
+    return call_ollama(prompt)
 
 
 def build_prompt(content: str, filename: str, existing: list) -> str:
@@ -541,8 +615,9 @@ Output ONLY the ===FILE:...===END=== block. Use real [[wikilinks]] from the entr
 
 def run_synthesis():
     """Two-phase synthesis: cluster all wiki entries, then synthesize each cluster."""
+    provider_label = f"Kimi K2 → Gemma 3 fallback" if PROVIDER == "kimi" else f"Ollama ({MODEL})"
     print(f"{'[DRY RUN] ' if DRY_RUN else ''}Starting wiki synthesis...")
-    print(f"Model: {MODEL}\n")
+    print(f"Provider: {provider_label}\n")
 
     digests = collect_wiki_digests()
     if not digests:
@@ -553,10 +628,10 @@ def run_synthesis():
     print(f"Phase 1: Clustering {len(digests)} wiki entries...")
 
     try:
-        cluster_response = call_ollama(build_cluster_prompt(digests))
+        cluster_response = call_llm(build_cluster_prompt(digests))
     except RuntimeError as e:
         print(f"  ERROR: {e}")
-        print("  Ollama must be running (open Ollama.app)")
+        print("  Make sure Ollama is running (open Ollama.app)")
         return
 
     clusters = parse_clusters(cluster_response)
@@ -599,7 +674,7 @@ def run_synthesis():
         print(f"  Synthesizing [{cluster_name}] from {len(matched_stems)} entries...")
 
         try:
-            synthesis_response = call_ollama(
+            synthesis_response = call_llm(
                 build_synthesis_prompt(cluster_name, entries_text, all_stems)
             )
         except RuntimeError as e:
@@ -718,8 +793,9 @@ def main():
         return
 
     existing = get_existing_wiki_stems()
+    provider_label = f"Kimi K2 → Gemma 3 fallback" if PROVIDER == "kimi" else f"Ollama ({MODEL})"
     print(f"{'[DRY RUN] ' if DRY_RUN else ''}Found {len(raw_files)} raw file(s), {len(existing)} existing wiki entries")
-    print(f"Model: {MODEL}\n")
+    print(f"Provider: {provider_label}\n")
 
     session_log = []
 
@@ -736,10 +812,10 @@ def main():
             continue
 
         try:
-            response = call_ollama(build_prompt(content, raw_file.name, existing))
+            response = call_llm(build_prompt(content, raw_file.name, existing))
         except RuntimeError as e:
             print(f"  ERROR: {e}")
-            print("  Skipping — Ollama must be running (ollama serve)")
+            print("  Skipping — make sure Ollama is running (ollama serve)")
             continue
 
         pairs = parse_response(response)

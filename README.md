@@ -224,10 +224,23 @@ Edit the top of `auto_ingest.py`:
 
 | Variable | Default | What it does |
 |---|---|---|
-| `MODEL` | `"gemma3:4b"` | Switch to `"qwen3.5:9b"` for better quality |
+| `MODEL` | `"gemma3:4b"` | Ollama model. Switch to `"qwen3.5:9b"` for better quality |
 | `MIN_HOURS` | `48` | Hours between auto-runs. Set to `24` for daily. |
 | `MAX_TOKENS` | `3000` | Max tokens per model call |
 | `RAW_CHUNK` | `3500` | Characters per clip sent to the model |
+
+### LLM Provider: Ollama (free) vs Kimi K2 (paid, better quality)
+
+By default the pipeline uses local Ollama (Gemma 3, completely free). To switch to Kimi K2:
+
+```bash
+export SECOND_BRAIN_PROVIDER=kimi
+export KIMI_API_KEY=your_key_here
+```
+
+Kimi K2 costs roughly $0.005 per ingest run and produces noticeably better wiki entries. If Kimi is unavailable (API down, bad key), it automatically falls back to Ollama, so ingest never silently fails.
+
+To get a Kimi API key: [platform.moonshot.cn](https://platform.moonshot.cn) (or check your `hermes-agent/.env` if you already have one).
 
 To change the run time, edit `launchd/com.nitesh.secondbrain-ingest.plist` and reload:
 
@@ -242,7 +255,7 @@ launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
 
 ```
 second-brain-ai/
-├── auto_ingest.py              ← local AI ingest (Ollama + Gemma 3)
+├── auto_ingest.py              ← AI ingest (Ollama/Gemma 3 free, or Kimi K2 paid)
 ├── brain_server.py             ← YouTube bookmarklet backend (port 7331)
 ├── setup.sh                    ← one-command installer
 ├── claude-commands/            ← /second-brain-* slash commands
