@@ -22,6 +22,7 @@ Usage:
     python3 auto_ingest.py --dry-run              # preview only, no writes
     python3 auto_ingest.py --synthesize           # synthesize wiki/ into wiki/synthesis/
     python3 auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
+    python3 auto_ingest.py --save <URL>           # download TikTok/Instagram, transcribe, save to raw/
 """
 
 import os
@@ -679,6 +680,28 @@ def main():
     # Synthesis mode — bypass ingest entirely
     if "--synthesize" in sys.argv:
         run_synthesis()
+        return
+
+    # Save mode — download a social media URL and transcribe it into raw/
+    if "--save" in sys.argv:
+        idx = sys.argv.index("--save")
+        if idx + 1 >= len(sys.argv):
+            print("Usage: python3 auto_ingest.py --save <TikTok or Instagram URL>")
+            return
+        url = sys.argv[idx + 1]
+        try:
+            from social_downloader import download_and_transcribe
+        except ImportError:
+            # Try loading from vault directory
+            import importlib.util, pathlib
+            spec = importlib.util.spec_from_file_location(
+                "social_downloader",
+                pathlib.Path(__file__).parent / "social_downloader.py",
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            download_and_transcribe = mod.download_and_transcribe
+        download_and_transcribe(url)
         return
 
     PROCESSED.mkdir(parents=True, exist_ok=True)
