@@ -336,15 +336,6 @@ Windows/Linux support, better local model prompts, and new ingest sources especi
 
 ---
 
-## 🙏 Credits
-
-Built by [@NiteshTechAI](https://x.com/NiteshTechAI).
-
-Inspired by [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain), [swyx/brain](https://github.com/swyxio/brain), and [Andrej Karpathy](https://x.com/karpathy).
-
-Powered by [Ollama](https://github.com/ollama/ollama), [Gemma 3](https://huggingface.co/google/gemma-3-4b-it), [Poppler](https://poppler.freedesktop.org), [pypdf](https://github.com/py-pdf/pypdf), [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api), and [Obsidian](https://obsidian.md).
-
----
 
 ## 📄 License
 
