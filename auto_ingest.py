@@ -78,7 +78,12 @@ KIMI_OUTPUT_PRICE_PER_M = 2.50
 # a macOS notification. A typical run costs ~$0.04-$0.10, so $1.00 is a
 # ~20x safety margin that still prevents runaway bugs (e.g. 100 clips,
 # huge prompts, retry loops). Override with env var COST_CAP_USD.
-COST_CAP_USD = float(os.environ.get("COST_CAP_USD", "1.00"))
+COST_CAP_USD         = float(os.environ.get("COST_CAP_USD", "1.00"))
+
+# Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
+# free Ollama/Gemma 3 for the rest of the calendar month so clips still
+# get processed — you just stop paying. Resets on the 1st of each month.
+COST_CAP_MONTHLY_USD = float(os.environ.get("COST_CAP_MONTHLY_USD", "5.00"))
 
 # Running tallies for the current ingest session
 _SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
@@ -94,6 +99,29 @@ def _session_cost() -> float:
         _SESSION_TOKENS["input"]  / 1_000_000 * KIMI_INPUT_PRICE_PER_M +
         _SESSION_TOKENS["output"] / 1_000_000 * KIMI_OUTPUT_PRICE_PER_M
     )
+
+
+def _monthly_spend() -> float:
+    """Parse outputs/cost-log.md and sum costs from the current calendar month.
+
+    The log format is: | YYYY-MM-DD HH:MM | calls | in | out | $0.0042 |
+    We extract the date prefix and dollar amount from each row.
+    """
+    log = VAULT / "outputs" / "cost-log.md"
+    if not log.exists():
+        return 0.0
+    month_prefix = datetime.now().strftime("%Y-%m")
+    total = 0.0
+    for line in log.read_text(encoding="utf-8").splitlines():
+        if not line.startswith(f"| {month_prefix}"):
+            continue
+        m = re.search(r'\$([\d.]+)\s*\|', line)
+        if m:
+            try:
+                total += float(m.group(1))
+            except ValueError:
+                continue
+    return total
 
 
 def _notify_macos(title: str, message: str):
@@ -841,9 +869,36 @@ def update_wiki_index():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def _check_monthly_cap():
+    """If this month's Kimi spend already exceeds COST_CAP_MONTHLY_USD,
+    auto-downgrade the provider to Ollama for this run and notify the user.
+
+    Mutates the module-level PROVIDER so all subsequent call_llm() calls
+    route to free Ollama instead of paid Kimi. Clips still get processed —
+    you just stop paying until the next month rolls over.
+    """
+    global PROVIDER
+    if PROVIDER != "kimi":
+        return
+    spent = _monthly_spend()
+    if spent >= COST_CAP_MONTHLY_USD:
+        month = datetime.now().strftime("%B")
+        print(f"\n  💰 Monthly cap reached: ${spent:.2f} spent on Kimi in {month} "
+              f"(cap: ${COST_CAP_MONTHLY_USD:.2f})")
+        print(f"     Auto-downgrading to free Ollama/Gemma 3 for the rest of {month}.")
+        _notify_macos(
+            f"Second Brain: {month} budget used",
+            f"${spent:.2f} spent. Switched to free Ollama until {month[:3]} 1st.",
+        )
+        PROVIDER = "ollama"
+    elif spent > 0:
+        print(f"  💰 Kimi spend this month: ${spent:.2f} / ${COST_CAP_MONTHLY_USD:.2f}")
+
+
 def main():
     # Synthesis mode — bypass ingest entirely
     if "--synthesize" in sys.argv:
+        _check_monthly_cap()
         run_synthesis()
         return
 
@@ -874,6 +929,9 @@ def main():
     # Frequency gate: skip if run too recently (launchd fires daily, script enforces 48h gap)
     if not should_run_today():
         return
+
+    # Budget gate: if month's Kimi spend is over the cap, switch to free Ollama
+    _check_monthly_cap()
 
     raw_files = get_raw_files()
     if not raw_files:
