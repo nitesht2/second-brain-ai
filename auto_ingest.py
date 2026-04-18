@@ -181,8 +181,29 @@ def fetch_youtube_transcript(url: str) -> str:
         return ""
 
 
+def is_already_ingested(video_id: str) -> bool:
+    """Return True if a YouTube video ID already exists in any wiki/sources/ entry.
+
+    Prevents duplicate wiki entries when the same video is captured via both
+    the bookmarklet (.txt) and Obsidian Web Clipper (.md).
+    """
+    sources_dir = WIKI_DIR / "sources"
+    if not sources_dir.exists():
+        return False
+    for p in sources_dir.glob("*.md"):
+        try:
+            if video_id in p.read_text(encoding="utf-8", errors="ignore"):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def extract_content(file_path) -> str:
     """Read file content, converting PDF and YouTube-URL txt files to markdown on the fly.
+
+    For .md files from Obsidian Web Clipper: detects YouTube URLs in YAML frontmatter
+    (source: field) and automatically fetches the full transcript.
 
     For TikTok, Instagram, and Twitter — use Obsidian Web Clipper instead.
     These platforms block programmatic access. Web Clipper reads what's in
@@ -191,7 +212,30 @@ def extract_content(file_path) -> str:
     suffix = file_path.suffix.lower()
 
     if suffix == ".md":
-        return file_path.read_text(encoding="utf-8", errors="ignore")
+        raw = file_path.read_text(encoding="utf-8", errors="ignore")
+        # Check for YAML frontmatter with a YouTube source URL (Obsidian Web Clipper format)
+        fm_match = re.search(r'^---\s*\n(.*?)\n---', raw, re.DOTALL)
+        if fm_match:
+            fm_block = fm_match.group(1)
+            source_match = re.search(
+                r'^source:\s*["\']?(https?://[^\s"\']+)["\']?',
+                fm_block,
+                re.MULTILINE,
+            )
+            if source_match:
+                url = source_match.group(1).strip()
+                video_id = extract_video_id(url)
+                if video_id:
+                    if is_already_ingested(video_id):
+                        print(f"  ⚠ Already in wiki (video ID {video_id}) — skipping duplicate.")
+                        return ""
+                    print(f"  ▶ YouTube URL detected in frontmatter — fetching transcript...")
+                    transcript = fetch_youtube_transcript(url)
+                    if transcript:
+                        body = raw[fm_match.end():].strip()
+                        return f"{body}\n\n{transcript}" if body else transcript
+        # Fallback: return full file as-is (articles, notes, non-YouTube clips)
+        return raw
 
     if suffix == ".pdf":
         return extract_pdf_text(file_path)

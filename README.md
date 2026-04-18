@@ -81,12 +81,13 @@ Drop any of these in `~/SecondBrain/raw/` and the next ingest picks them up:
 
 | Format | Example | How it's processed |
 |---|---|---|
-| **`.md`** | Web Clipper output, notes | Read as-is |
+| **`.md` (Web Clipper — YouTube)** | Obsidian Web Clipper on a YouTube video | YouTube URL detected in `source:` frontmatter, full transcript fetched automatically |
+| **`.md` (Web Clipper — article)** | Obsidian Web Clipper on any webpage | Read as-is — title, body, and metadata passed to the AI |
 | **`.pdf`** | Papers, articles, resumes | Text extracted via [pdftotext (poppler)](https://poppler.freedesktop.org), falls back to [pypdf](https://github.com/py-pdf/pypdf) |
-| **`.txt` (YouTube URL)** | `video.txt` with a YouTube URL on the first line | Transcript fetched via [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) |
+| **`.txt` (YouTube URL)** | Bookmarklet save — `video.txt` with a YouTube URL | Transcript fetched via [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) |
 | **`.txt` (plain text)** | Any text file | Read as-is |
 
-Both libraries are fully open-source (MIT licensed).
+All libraries are fully open-source (MIT licensed). Duplicate detection: if the same YouTube video is captured twice (via both bookmarklet and Web Clipper), the second one is silently skipped.
 
 ---
 
@@ -178,6 +179,8 @@ Then in Claude Code:
 ```
 
 That's it. Install the [Web Clipper](https://obsidian.md/clipper), point it at the `raw` folder, and start clipping. The auto-ingest runs every 2 days at 4:07am automatically.
+
+**For YouTube:** open `http://localhost:7331/setup` in your browser and drag the red **→ Brain** button to your bookmarks bar. One click on any YouTube page saves it to your vault.
 
 > 👉 **For the full guided walkthrough, see [Full Setup](#-full-setup-detailed) below.**
 
@@ -398,6 +401,7 @@ second-brain-ai/
 ├── README.md                                     ← you are here
 ├── setup.sh                                      ← one-command installer (runs all setup steps)
 ├── auto_ingest.py                                ← local AI ingest script (Ollama + Gemma 3)
+├── brain_server.py                               ← bookmarklet backend (HTTP server, port 7331)
 ├── CONTRIBUTING.md                               ← how to contribute
 ├── LICENSE                                       ← MIT
 ├── .gitignore
@@ -406,10 +410,12 @@ second-brain-ai/
 │   ├── second-brain.md                           ← /second-brain (setup wizard)
 │   ├── second-brain-ingest.md                    ← /second-brain-ingest (Claude Sonnet quality)
 │   ├── second-brain-query.md                     ← /second-brain-query (ask questions)
-│   └── second-brain-lint.md                      ← /second-brain-lint (health check)
+│   ├── second-brain-lint.md                      ← /second-brain-lint (health check)
+│   └── second-brain-synthesis.md                 ← /second-brain-synthesis (generate insight notes)
 │
-├── launchd/                                      ← macOS auto-scheduler
-│   └── com.nitesh.secondbrain-ingest.plist       ← runs every 2 days at 4:07am
+├── launchd/                                      ← macOS background agents
+│   ├── com.nitesh.secondbrain-ingest.plist       ← runs every 2 days at 4:07am
+│   └── com.nitesh.secondbrain-server.plist       ← brain_server.py, runs 24/7 (KeepAlive)
 │
 ├── docs/
 │   └── screenshots/
@@ -525,13 +531,16 @@ The script will tell you exactly which one is missing in its error output.
 All core features are complete and working:
 
 - [x] Web Clipper → auto-ingest pipeline (`.md`, `.pdf`, `.txt`, YouTube URLs)
+- [x] **Obsidian Web Clipper YouTube detection** — clips YouTube from any device, transcript fetched automatically via `source:` frontmatter
+- [x] **Duplicate guard** — same YouTube video captured twice (bookmarklet + Web Clipper) is silently skipped, no duplicate wiki entries
+- [x] **1-click YouTube bookmarklet** — `brain_server.py` runs on port 7331 (launchd, permanent); setup page at `http://localhost:7331/setup`
 - [x] Local AI processing via Ollama — zero cost, zero cloud
 - [x] `wiki/entities/`, `wiki/concepts/`, `wiki/sources/` auto-created with [[wikilinks]]
 - [x] `wiki/synthesis/` — cross-topic insight notes auto-generated after every ingest
 - [x] `wiki/index.md` — master table of contents, regenerated after every ingest
-- [x] macOS launchd scheduler — runs every 2 days at 4am automatically
+- [x] macOS launchd scheduler — ingest runs every 2 days at 4am; brain server runs 24/7
 - [x] `/second-brain-ingest`, `/second-brain-query`, `/second-brain-lint`, `/second-brain-synthesis` slash commands
-- [x] `setup.sh` — one-command installer
+- [x] `setup.sh` — one-command installer (vault, launchd agents, slash commands, brain server)
 
 ---
 
