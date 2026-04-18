@@ -520,15 +520,18 @@ The script will tell you exactly which one is missing in its error output.
 
 ---
 
-## 🗺️ Roadmap
+## ✅ What's Built
 
-- [ ] Windows support (Task Scheduler)
-- [ ] Linux cron setup guide
-- [x] Auto-update `wiki/index.md` after every ingest ✅
-- [x] `wiki/synthesis/` auto-generation ✅
-- [x] PDF + YouTube transcript ingestion ✅
-- [ ] Discord/Slack notification on ingest completion
-- [ ] Web dashboard to browse vault without Obsidian
+All core features are complete and working:
+
+- [x] Web Clipper → auto-ingest pipeline (`.md`, `.pdf`, `.txt`, YouTube URLs)
+- [x] Local AI processing via Ollama — zero cost, zero cloud
+- [x] `wiki/entities/`, `wiki/concepts/`, `wiki/sources/` auto-created with [[wikilinks]]
+- [x] `wiki/synthesis/` — cross-topic insight notes auto-generated after every ingest
+- [x] `wiki/index.md` — master table of contents, regenerated after every ingest
+- [x] macOS launchd scheduler — runs every 2 days at 4am automatically
+- [x] `/second-brain-ingest`, `/second-brain-query`, `/second-brain-lint`, `/second-brain-synthesis` slash commands
+- [x] `setup.sh` — one-command installer
 
 ---
 
