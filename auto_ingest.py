@@ -74,8 +74,39 @@ KIMI_BASE_URL   = "https://api.moonshot.ai/v1/chat/completions"
 KIMI_INPUT_PRICE_PER_M  = 0.15
 KIMI_OUTPUT_PRICE_PER_M = 2.50
 
+# Hard cost cap per ingest run. Exceeding this halts the run and fires
+# a macOS notification. A typical run costs ~$0.04-$0.10, so $1.00 is a
+# ~20x safety margin that still prevents runaway bugs (e.g. 100 clips,
+# huge prompts, retry loops). Override with env var COST_CAP_USD.
+COST_CAP_USD = float(os.environ.get("COST_CAP_USD", "1.00"))
+
 # Running tallies for the current ingest session
 _SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
+
+
+class CostCapExceeded(Exception):
+    """Raised when Kimi session cost crosses COST_CAP_USD. Halts the run."""
+
+
+def _session_cost() -> float:
+    """Return USD cost of Kimi API calls so far this session."""
+    return (
+        _SESSION_TOKENS["input"]  / 1_000_000 * KIMI_INPUT_PRICE_PER_M +
+        _SESSION_TOKENS["output"] / 1_000_000 * KIMI_OUTPUT_PRICE_PER_M
+    )
+
+
+def _notify_macos(title: str, message: str):
+    """Fire a native macOS notification (no deps, uses osascript)."""
+    try:
+        import subprocess
+        subprocess.run(
+            ["osascript", "-e",
+             f'display notification "{message}" with title "{title}" sound name "Basso"'],
+            timeout=5, capture_output=True,
+        )
+    except Exception:
+        pass  # notifications are best-effort
 
 DRY_RUN     = "--dry-run" in sys.argv
 
@@ -352,6 +383,14 @@ def call_kimi(prompt: str) -> str:
             _SESSION_TOKENS["input"]  += usage.get("prompt_tokens", 0)
             _SESSION_TOKENS["output"] += usage.get("completion_tokens", 0)
             _SESSION_TOKENS["calls"]  += 1
+
+            # Hard cost cap — halt the run if we cross the threshold
+            cost_so_far = _session_cost()
+            if cost_so_far > COST_CAP_USD:
+                raise CostCapExceeded(
+                    f"Kimi session cost ${cost_so_far:.4f} exceeded cap ${COST_CAP_USD:.2f} "
+                    f"after {_SESSION_TOKENS['calls']} calls"
+                )
             return body["choices"][0]["message"]["content"].strip()
     except urllib.error.URLError as e:
         raise RuntimeError(f"Kimi API not reachable: {e}")
@@ -369,6 +408,10 @@ def call_llm(prompt: str) -> str:
     if PROVIDER == "kimi":
         try:
             return call_kimi(prompt)
+        except CostCapExceeded:
+            # Don't fall back — the whole point of the cap is to STOP.
+            # Bubble up so the main loop can halt and notify the user.
+            raise
         except RuntimeError as e:
             print(f"  ⚠ Kimi failed ({e}) — falling back to Ollama/Gemma 3")
             return call_ollama(prompt)
@@ -666,6 +709,11 @@ def run_synthesis():
 
     try:
         cluster_response = call_llm(build_cluster_prompt(digests))
+    except CostCapExceeded as e:
+        print(f"\n  🛑 COST CAP HIT: {e}")
+        _notify_macos("Second Brain: cost cap hit",
+                      f"Synthesis halted at ${_session_cost():.2f}.")
+        return
     except RuntimeError as e:
         print(f"  ERROR: {e}")
         print("  Make sure Ollama is running (open Ollama.app)")
@@ -714,6 +762,11 @@ def run_synthesis():
             synthesis_response = call_llm(
                 build_synthesis_prompt(cluster_name, entries_text, all_stems)
             )
+        except CostCapExceeded as e:
+            print(f"\n    🛑 COST CAP HIT: {e}")
+            _notify_macos("Second Brain: cost cap hit",
+                          f"Synthesis stopped mid-run at ${_session_cost():.2f}.")
+            return
         except RuntimeError as e:
             print(f"    ERROR: {e}")
             continue
@@ -850,6 +903,15 @@ def main():
 
         try:
             response = call_llm(build_prompt(content, raw_file.name, existing))
+        except CostCapExceeded as e:
+            print(f"\n  🛑 COST CAP HIT: {e}")
+            print(f"  Halting run. Unprocessed files remain in raw/ for next session.")
+            _notify_macos(
+                "Second Brain: cost cap hit",
+                f"Kimi cost ${_session_cost():.2f} > ${COST_CAP_USD:.2f}. Run stopped.",
+            )
+            append_cost_log()
+            return
         except RuntimeError as e:
             print(f"  ERROR: {e}")
             print("  Skipping — make sure Ollama is running (ollama serve)")
