@@ -22,11 +22,12 @@ Open-source dependencies used by this script:
   - youtube-transcript-api (YouTube transcripts) — https://github.com/jdepoix/youtube-transcript-api
 
 Usage:
-    python3 auto_ingest.py                        # normal ingest run
-    python3 auto_ingest.py --dry-run              # preview only, no writes
-    python3 auto_ingest.py --synthesize           # synthesize wiki/ into wiki/synthesis/
-    python3 auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
-    python3 auto_ingest.py --save <URL>           # download TikTok/Instagram, transcribe, save to raw/
+    python3 auto_ingest.py                               # normal ingest run
+    python3 auto_ingest.py --dry-run                     # preview only, no writes
+    python3 auto_ingest.py --synthesize                  # synthesize wiki/ into wiki/synthesis/
+    python3 auto_ingest.py --synthesize --dry-run        # preview synthesis, no writes
+    python3 auto_ingest.py --synthesize --force-synthesis # regenerate ALL clusters (ignore incremental guard)
+    python3 auto_ingest.py --save <URL>                  # download TikTok/Instagram, transcribe, save to raw/
 """
 
 import os
@@ -669,6 +670,30 @@ def _norm(s: str) -> str:
     return re.sub(r'[^a-z0-9]', '', s.lower())
 
 
+def needs_resynthesis(cluster_name: str, entry_paths: list) -> bool:
+    """Return True if the synthesis file is missing OR any cluster entry was
+    modified after the synthesis file was last written.
+
+    This is the core of incremental synthesis: skip clusters where nothing
+    changed since last run. Typical savings at steady state are 3-5x because
+    most clusters don't change day-to-day.
+
+    Matches the filename produced by build_synthesis_prompt():
+        wiki/synthesis/Synthesis - {cluster_name}.md
+    """
+    synth_file = WIKI_DIR / "synthesis" / f"Synthesis - {cluster_name}.md"
+    if not synth_file.exists():
+        return True  # never synthesized → do it
+    synth_mtime = synth_file.stat().st_mtime
+    for p in entry_paths:
+        try:
+            if p.stat().st_mtime > synth_mtime:
+                return True
+        except OSError:
+            return True  # path gone? safer to regenerate
+    return False
+
+
 def build_synthesis_prompt(cluster_name: str, entries_text: str, all_stems: list) -> str:
     """Build the synthesis prompt for a single theme cluster."""
     all_entries_ref = "\n".join(f"  - [[{s}]]" for s in all_stems[:80])
@@ -762,6 +787,9 @@ def run_synthesis():
     (WIKI_DIR / "synthesis").mkdir(parents=True, exist_ok=True)
     created_total = 0
 
+    force = "--force-synthesis" in sys.argv
+    skipped_unchanged = 0
+
     print("Phase 2: Synthesizing each cluster...\n")
     for cluster_name, stems in clusters.items():
         if len(stems) < 3:
@@ -771,6 +799,7 @@ def run_synthesis():
         # Collect full content for entries in this cluster (fuzzy match on stem)
         parts = []
         matched_stems = []
+        matched_paths = []
         stem_map_norm = {_norm(d["stem"]): d for d in digests}
         for stem in stems:
             hit = stem_map_norm.get(_norm(stem))
@@ -778,9 +807,16 @@ def run_synthesis():
                 text = hit["path"].read_text(encoding="utf-8", errors="ignore")
                 parts.append(f"### {hit['stem']}\n{text[:1200]}")
                 matched_stems.append(hit["stem"])
+                matched_paths.append(hit["path"])
 
         if len(matched_stems) < 3:
             print(f"  Skipping [{cluster_name}] — fewer than 3 entries matched on disk")
+            continue
+
+        # Incremental guard: skip if no entry has changed since last synthesis
+        if not force and not needs_resynthesis(cluster_name, matched_paths):
+            print(f"  ⏭  Skipping [{cluster_name}] — unchanged since last synthesis")
+            skipped_unchanged += 1
             continue
 
         entries_text = "\n\n".join(parts)
@@ -812,7 +848,10 @@ def run_synthesis():
             if is_new:
                 created_total += 1
 
-    print(f"\nSynthesis done. {created_total} new synthesis entries created.")
+    print(f"\nSynthesis done. {created_total} new synthesis entries created, "
+          f"{skipped_unchanged} cluster(s) skipped as unchanged.")
+    if skipped_unchanged and not force:
+        print(f"  (Use --force-synthesis to regenerate all clusters)")
     if DRY_RUN:
         print("[DRY RUN] No files were actually written.")
 
