@@ -1,170 +1,85 @@
 <div align="center">
 
-# 🧠 AI-Powered Second Brain
+# 🧠 Second Brain AI
 
 ### Clip anything. Wake up to a connected knowledge graph.
 
-**An AI-Powered Second Brain built on Obsidian + Claude Code + free local AI (Ollama + Gemma 3).**
-**You save articles. The AI organizes them into a searchable wiki while you sleep.**
-
-> Inspired by [Andrej Karpathy's LLM-Wiki pattern](https://github.com/karpathy) — *"the LLM is the librarian, you're the curator."*
+**Local AI that organizes everything you read and watch into a searchable Obsidian wiki — automatically, for free.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![macOS](https://img.shields.io/badge/Platform-macOS-lightgrey)](#)
 [![Ollama](https://img.shields.io/badge/Runs%20on-Ollama-black)](https://ollama.com)
 [![Claude Code](https://img.shields.io/badge/Works%20with-Claude%20Code-orange)](https://claude.ai/code)
-[![Obsidian](https://img.shields.io/badge/Visualized%20in-Obsidian-7c3aed)](https://obsidian.md)
-[![macOS](https://img.shields.io/badge/Platform-macOS-lightgrey)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[🚀 Quick Start](#-quick-start-30-seconds) • [📖 Full Setup](#-full-setup-detailed) • [💡 Use Cases](#-who-its-for) • [🐛 Troubleshooting](#-troubleshooting)
+[Quick Start](#-quick-start) • [How It Works](#-how-it-works) • [Usage](#-usage) • [Setup Guide](#-full-setup) • [Troubleshooting](#-troubleshooting)
 
 ---
 
 ![Obsidian Graph View](docs/screenshots/graph-view.png)
 
-*Your knowledge graph after a single ingest session — 45 wiki entries, all auto-connected.*
+*Real output after one ingest session — 45 wiki entries, all auto-connected.*
 
 </div>
 
 ---
 
-## 📋 Table of Contents
+## Why This Exists
 
-- [What It Does](#-what-it-does)
-- [Who It's For](#-who-its-for)
-- [Quick Start](#-quick-start-30-seconds)
-- [Prerequisites](#-prerequisites)
-- [Full Setup](#-full-setup-detailed)
-- [Usage](#-usage)
-- [Configuration](#️-configuration)
-- [Two-Speed Pipeline](#-two-speed-pipeline)
-- [Proven Results](#-proven-results)
-- [Repo Structure](#-repo-structure)
-- [Troubleshooting](#-troubleshooting)
-- [Roadmap](#️-roadmap)
-- [Contributing](#-contributing)
-- [Credits](#-credits)
+Most knowledge tools are write-heavy. You read 20 articles a week, bookmark them, and never look at them again.
+
+This flips it: **clip once, AI organizes overnight.** Everything you read and watch turns into a searchable, linked wiki while you sleep. No manual filing. No tagging. No API keys. Runs entirely on your Mac for free.
+
+> *"The LLM is the librarian, you're the curator."* — inspired by [Andrej Karpathy](https://x.com/karpathy)
 
 ---
 
-## 🎯 What It Does
+## How It Works
 
 ```
-📎 Clip articles, drop PDFs, or save YouTube URLs
+📎 Clip article or YouTube video  (Obsidian Web Clipper or bookmarklet)
                ↓
-📁 Lands in ~/SecondBrain/raw/  (.md, .pdf, or .txt with YouTube URL)
+📁 Lands in ~/SecondBrain/raw/
                ↓
-⏰ Every 2 days at 4am  (automatic, macOS launchd)
+⏰ Every 2 days at 4am  (macOS launchd, fully automatic)
                ↓
-🤖 Step 1 — Ingest  (Ollama + Gemma 3, completely free)
+🤖 Ingest  —  Ollama + Gemma 3, completely free
     wiki/entities/   → people, companies, tools
     wiki/concepts/   → ideas, frameworks, strategies
     wiki/sources/    → one summary per clip
                ↓ auto
-🧩 Step 2 — Synthesis  (runs immediately after ingest, no extra setup)
-    wiki/synthesis/  → cross-topic patterns, contradictions, key insights
-               ↓
-🔗 Everything linked with [[wikilinks]]
+🧩 Synthesis  —  cross-topic patterns, contradictions, key insights
+    wiki/synthesis/  → generated automatically after every ingest
                ↓ auto
-📋 wiki/index.md regenerated  (master table of contents, 1 click to any entry)
+📋 wiki/index.md  —  master table of contents, always up to date
                ↓
-🌐 Obsidian graph view renders your knowledge map
+🌐 Obsidian graph view  —  your knowledge map, fully linked
                ↓
-💬 /second-brain-query answers questions with citations
+💬 /second-brain-query  —  ask questions, get cited answers
 ```
 
-**Zero cost. Zero manual effort. Drop files in raw/ — wake up to a fully connected, synthesized knowledge graph.**
+**Zero cost. Zero manual effort. One clip = one wiki entry with [[wikilinks]] to everything related.**
 
-### 📥 Supported Input Formats
+---
 
-Drop any of these in `~/SecondBrain/raw/` and the next ingest picks them up:
+## What You Can Clip
 
-| Format | Example | How it's processed |
+| Format | How to capture | What happens |
 |---|---|---|
-| **`.md` (Web Clipper — YouTube)** | Obsidian Web Clipper on a YouTube video | YouTube URL detected in `source:` frontmatter, full transcript fetched automatically |
-| **`.md` (Web Clipper — article)** | Obsidian Web Clipper on any webpage | Read as-is — title, body, and metadata passed to the AI |
-| **`.pdf`** | Papers, articles, resumes | Text extracted via [pdftotext (poppler)](https://poppler.freedesktop.org), falls back to [pypdf](https://github.com/py-pdf/pypdf) |
-| **`.txt` (YouTube URL)** | Bookmarklet save — `video.txt` with a YouTube URL | Transcript fetched via [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) |
-| **`.txt` (plain text)** | Any text file | Read as-is |
+| **YouTube video** | Obsidian Web Clipper or → Brain bookmarklet | Full transcript fetched automatically |
+| **Article / blog** | Obsidian Web Clipper | Full page content processed |
+| **PDF** | Drop into `raw/` folder | Text extracted via pdftotext, fallback to pypdf |
+| **Plain text / notes** | Drop `.txt` into `raw/` | Read as-is |
 
-All libraries are fully open-source (MIT licensed). Duplicate detection: if the same YouTube video is captured twice (via both bookmarklet and Web Clipper), the second one is silently skipped.
+**Cross-device:** Obsidian Web Clipper works on any device (phone, work computer). Files sync to your Mac via Obsidian Sync — ingest picks them up automatically.
 
----
-
-## 👥 Who It's For
-
-This tool is for anyone who reads a lot online and wants their notes to actually connect. Use cases:
-
-- 🔬 **AI researchers** — clip papers and threads. Query: *"What have I saved about multi-agent systems?"*
-- ✍️ **Content creators** — save viral posts and hooks. Query: *"What LinkedIn hooks have I collected?"*
-- 💻 **Developers** — clip tutorials, docs, Stack Overflow. Query: *"How did I set up Ollama last time?"*
-- 🎓 **Students** — save lecture notes and readings. Graph view shows how concepts link.
-- 💼 **Entrepreneurs** — clip business case studies. Query: *"What SaaS strategies have I researched?"*
-- 📈 **Investors** — track trends and news. Query: *"What have I saved about AI infrastructure?"*
-- 🎯 **Job seekers** — clip advice, tips, company research. Build a map before interviews.
-- 📝 **Writers** — save inspiration, quotes, research. Query: *"What do I know about persuasion?"*
-- 🧠 **Anyone who reads a lot** — stop losing what you've read. Everything becomes searchable.
+**Duplicate protection:** clip the same YouTube video twice and the second one is silently skipped.
 
 ---
 
-## 🔮 What is Obsidian?
+## ⚡ Quick Start
 
-[**Obsidian**](https://obsidian.md) is a free, local-first Markdown editor that turns your notes into a visual knowledge graph. Every time you write `[[Another Note]]` in a file, Obsidian creates a link between them — and the **Graph View** renders all those links as an interactive web of nodes.
-
-That's why this project uses Obsidian: your Second Brain isn't just a folder of files, it's a **visual, explorable map** of everything you've learned. The screenshot at the top of this README is a real Obsidian Graph View from the first run of this system.
-
-**Key things to know:**
-- ✅ **Free** — no subscription required for local use
-- ✅ **Your data stays on your Mac** — no cloud sync unless you opt in
-- ✅ **Plain Markdown files** — works with any editor if you ever leave
-- ✅ **Works offline** — everything runs locally
-
-**👉 Download:** [https://obsidian.md](https://obsidian.md)
-
-Available for macOS, Windows, Linux, iOS, and Android.
-
----
-
-## 🤖 What Local LLM Does This Use?
-
-This project uses **[Ollama](https://ollama.com)** to run open-source AI models locally on your Mac. **Zero cost, zero API keys, zero data sent to any cloud.** Everything stays on your machine.
-
-**We tested and recommend these models:**
-
-| Model | Size | Speed | Quality | Best for |
-|---|---|---|---|---|
-| **`gemma3:4b`** ✅ *default* | ~3GB | Fast (~30s per clip) | Good structured output | Daily clips, most users |
-| `qwen3.5:4b` | ~3GB | Fast | Thinking model (uses `thinking` field) | Experimentation |
-| `qwen3.5:9b` | ~7GB | Slower (~60s per clip) | Best quality, better connections | Power users with 16GB+ RAM |
-
-**Why Gemma 3 as default?**
-- Fast enough to process many clips in one overnight run
-- Reliable at following structured output format (needed for wiki entries with `[[wikilinks]]`)
-- Only 3GB — fits comfortably alongside your other apps
-- Made by Google, actively maintained, fully open-source
-
-**How much RAM does it use?**
-- Gemma 3 4B → ~3-4GB while running
-- Qwen 3.5 9B → ~7-8GB while running
-
-Any M-series MacBook with 16GB+ RAM handles these comfortably.
-
-```bash
-# Install your preferred model
-ollama pull gemma3:4b          # recommended
-ollama pull qwen3.5:9b         # optional, better quality
-```
-
-Swap models anytime by editing one line in `auto_ingest.py`:
-```python
-MODEL = "gemma3:4b"    # or "qwen3.5:9b" or "qwen3.5:4b"
-```
-
----
-
-## ⚡ Quick Start (30 seconds)
-
-**Requires:** macOS, [Obsidian](https://obsidian.md), [Ollama](https://ollama.com), [Claude Code](https://claude.ai/code)
+**Requires:** macOS 12+, 16GB+ RAM, [Obsidian](https://obsidian.md), [Ollama](https://ollama.com), [Claude Code](https://claude.ai/code)
 
 ```bash
 git clone https://github.com/nitesht2/second-brain-ai
@@ -178,135 +93,9 @@ Then in Claude Code:
 /second-brain
 ```
 
-That's it. Install the [Web Clipper](https://obsidian.md/clipper), point it at the `raw` folder, and start clipping. The auto-ingest runs every 2 days at 4:07am automatically.
+That's it. Install [Obsidian Web Clipper](https://obsidian.md/clipper), set the save location to `raw`, and start clipping. Ingest runs automatically every 2 days at 4am.
 
-**For YouTube:** open `http://localhost:7331/setup` in your browser and drag the red **→ Brain** button to your bookmarks bar. One click on any YouTube page saves it to your vault.
-
-> 👉 **For the full guided walkthrough, see [Full Setup](#-full-setup-detailed) below.**
-
----
-
-## 📦 Prerequisites
-
-Install these four free tools before starting:
-
-| Tool | What it is | Download |
-|---|---|---|
-| 🔮 **Obsidian** | Free Markdown editor with graph view — **this is where you'll see your knowledge map** | **[→ obsidian.md](https://obsidian.md)** |
-| 🤖 **Ollama** | Runs AI models locally on your Mac (fully free, no API key) | **[→ ollama.com](https://ollama.com)** |
-| ✨ **Claude Code** | Anthropic's AI assistant that powers the slash commands | **[→ claude.ai/code](https://claude.ai/code)** |
-| 📎 **Obsidian Web Clipper** | Chrome/Firefox extension that saves webpages into your vault | **[→ obsidian.md/clipper](https://obsidian.md/clipper)** |
-
-> **macOS required** for the auto-scheduler. Linux: use cron. Windows: see [Roadmap](#️-roadmap).
-
----
-
-## 🚀 Full Setup (Detailed)
-
-<details>
-<summary><b>📘 Click to expand the full 9-step walkthrough (~15 min)</b></summary>
-
-### Step 1 — Clone the repo
-
-```bash
-git clone https://github.com/nitesht2/second-brain-ai
-cd second-brain-ai
-```
-
-### Step 2 — Create your vault
-
-```bash
-mkdir -p ~/SecondBrain/{raw/processed,wiki/{entities,concepts,sources,synthesis},outputs}
-cp vault-template/CLAUDE.md ~/SecondBrain/
-cp vault-template/wiki/index.md ~/SecondBrain/wiki/
-cp vault-template/wiki/log.md ~/SecondBrain/wiki/
-```
-
-Structure created:
-```
-~/SecondBrain/
-├── raw/              ← clips land here
-│   └── processed/    ← moved after processing
-├── wiki/
-│   ├── entities/     ← people, companies, tools
-│   ├── concepts/     ← ideas, frameworks
-│   ├── sources/      ← clip summaries
-│   ├── synthesis/    ← cross-topic insights
-│   ├── index.md      ← master index
-│   └── log.md        ← change log
-├── outputs/          ← query/lint results
-└── CLAUDE.md         ← vault rules for Claude
-```
-
-### Step 3 — Open in Obsidian
-
-1. Open **Obsidian**
-2. Click **"Open folder as vault"** → select `~/SecondBrain`
-3. Click the **graph icon** in the sidebar → Graph View
-
-### Step 4 — Configure Web Clipper
-
-1. Install [Obsidian Web Clipper](https://obsidian.md/clipper) in Chrome
-2. Extension settings → set **Note location** to `raw`
-3. Name the template (e.g. "Brain Dump")
-4. Test: clip any webpage → check `~/SecondBrain/raw/`
-
-### Step 5 — Install Ollama + pull a model
-
-```bash
-ollama pull gemma3:4b        # recommended, ~3GB
-ollama pull qwen3.5:9b       # optional, higher quality, ~7GB
-```
-
-### Step 6 — Install slash commands
-
-```bash
-cp claude-commands/*.md ~/.claude/commands/
-```
-
-### Step 7 — Set up auto-ingest
-
-Install the open-source tools needed for PDF and YouTube support:
-
-```bash
-# Industry-standard PDF extractor (recommended)
-brew install poppler
-
-# Python libraries for YouTube transcripts and PDF fallback
-pip3 install --break-system-packages youtube-transcript-api pypdf
-```
-
-Then deploy the script and scheduler:
-
-```bash
-cp auto_ingest.py ~/SecondBrain/
-python3 ~/SecondBrain/auto_ingest.py --dry-run
-cp launchd/com.nitesh.secondbrain-ingest.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
-launchctl list | grep secondbrain
-```
-
-Expected: `-  0  com.nitesh.secondbrain-ingest`
-
-### Step 8 — Run the setup wizard
-
-In Claude Code:
-```
-/second-brain
-```
-
-### Step 9 — Test the full pipeline
-
-```bash
-echo "# Gemma 3 by Google
-Runs locally via Ollama for free." > ~/SecondBrain/raw/test-gemma.md
-
-python3 ~/SecondBrain/auto_ingest.py
-```
-
-Open Obsidian — new nodes appear in the graph.
-
-</details>
+**For YouTube:** open `http://localhost:7331/setup` in your browser and drag the red **→ Brain** button to your bookmarks bar.
 
 ---
 
@@ -314,50 +103,24 @@ Open Obsidian — new nodes appear in the graph.
 
 Five slash commands in Claude Code:
 
-| Command | What it does | Uses tokens? |
-|---|---|:---:|
-| `/second-brain` | Setup wizard — checks your configuration | No |
-| `/second-brain-ingest` | Process raw clips with Claude Sonnet (best quality) | Yes |
-| `/second-brain-query [question]` | Ask questions, get cited answers from your wiki | Yes |
-| `/second-brain-lint` | Health check: broken links, orphans, stubs, gaps | Yes |
-| `/second-brain-synthesis` | Cluster wiki into themes and generate insight notes | No |
+| Command | What it does |
+|---|---|
+| `/second-brain` | Setup wizard — checks your configuration |
+| `/second-brain-ingest` | Process raw clips now with Claude Sonnet (best quality) |
+| `/second-brain-query [question]` | Ask questions, get cited answers from your wiki |
+| `/second-brain-lint` | Health check: broken links, orphans, stubs, gaps |
+| `/second-brain-synthesis` | Generate cross-topic insight notes on demand |
 
-**Plus the free local script:**
-
-```bash
-python3 ~/SecondBrain/auto_ingest.py                        # run ingest manually
-python3 ~/SecondBrain/auto_ingest.py --dry-run              # preview ingest, no writes
-python3 ~/SecondBrain/auto_ingest.py --synthesize           # generate wiki/synthesis/ entries
-python3 ~/SecondBrain/auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
-```
-
-Both run automatically every 2 days via launchd — ingest first, then synthesis immediately after. You never need to run either manually unless you want to trigger it on demand.
-
----
-
-## ⚙️ Configuration
-
-Edit the top of `auto_ingest.py`:
-
-```python
-MODEL      = "gemma3:4b"   # or "qwen3.5:9b" for higher quality
-MIN_HOURS  = 48            # 48 = every 2 days, 24 = daily
-MAX_TOKENS = 3000          # max tokens per model call
-RAW_CHUNK  = 3500          # chars per clip sent to model
-```
-
-<details>
-<summary><b>Change the run time</b></summary>
+**Local script (free, no tokens):**
 
 ```bash
-nano ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
-# Change <integer>4</integer> (Hour) to your preferred hour
-
-launchctl unload ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
-launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
+python3 ~/SecondBrain/auto_ingest.py                        # run ingest now
+python3 ~/SecondBrain/auto_ingest.py --dry-run              # preview, no writes
+python3 ~/SecondBrain/auto_ingest.py --synthesize           # generate synthesis notes
+python3 ~/SecondBrain/auto_ingest.py --synthesize --dry-run # preview synthesis
 ```
 
-</details>
+The local script runs automatically every 2 days. Use slash commands when you want higher quality output (Claude Sonnet vs Gemma 3) or want to query your wiki.
 
 ---
 
@@ -365,32 +128,117 @@ launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
 
 | | 🤖 Auto (Local AI) | ✨ Manual (Claude Sonnet) |
 |---|---|---|
-| **Trigger** | Every 2 days at 4am | You type `/second-brain-ingest` |
+| **Trigger** | Every 2 days at 4am | `/second-brain-ingest` |
 | **Cost** | Free | Claude Code tokens |
 | **Quality** | Good | Excellent |
 | **Speed** | ~30-60s per clip | ~10-20s per clip |
-| **Best for** | Daily clips, bookmarks | Key research, deep articles |
 
-**Recommended:** Let local AI handle the daily drip. Run Claude for anything that truly matters.
+**Recommended:** let local AI handle the daily drip. Run Claude for anything that truly matters.
 
 ---
 
-## 🔥 Proven Results
+## 📦 Prerequisites
 
-> First real run on a personal vault: **16 files ingested → 45 wiki entries created → 15 broken links detected → 14 auto-fixed in 5 minutes.**
->
-> Zero tokens spent on the daily pipeline. Everything searchable in Obsidian graph view.
+| Tool | Purpose | Download |
+|---|---|---|
+| **Obsidian** | View your knowledge graph | [obsidian.md](https://obsidian.md) |
+| **Ollama** | Run AI models locally, free | [ollama.com](https://ollama.com) |
+| **Claude Code** | Powers the slash commands | [claude.ai/code](https://claude.ai/code) |
+| **Obsidian Web Clipper** | One-click page saving | [obsidian.md/clipper](https://obsidian.md/clipper) |
+
+> macOS required for the auto-scheduler. Linux: use cron instead of launchd.
+
+---
+
+## 🚀 Full Setup
 
 <details>
-<summary><b>Full session breakdown</b></summary>
+<summary><b>Click to expand the full walkthrough (~15 min)</b></summary>
 
-- **Phase 1:** Migrated 11 old clips from a wrong vault into the correct structure
-- **Phase 2:** Ran `/second-brain-ingest` on 16 files → 45 wiki entries created
-- **Phase 3:** Asked `/second-brain-query "LinkedIn growth strategy"` → cited answer saved to outputs/
-- **Phase 4:** Ran `/second-brain-lint` → found 15 broken links, 1 stub → fixed to 1 broken (intentionally deferred)
-- **Phase 5:** Built `auto_ingest.py` + macOS launchd plist for fully automated, free, local daily processing
+### Step 1 — Clone and run setup
+
+```bash
+git clone https://github.com/nitesht2/second-brain-ai
+cd second-brain-ai
+./setup.sh
+```
+
+This creates the vault, copies scripts, installs slash commands, and starts both launchd agents (ingest scheduler + brain server).
+
+### Step 2 — Pull an AI model
+
+```bash
+ollama pull gemma3:4b        # recommended — fast, 3GB, great structured output
+ollama pull qwen3.5:9b       # optional — better quality, 7GB, needs 16GB+ RAM
+```
+
+### Step 3 — Open vault in Obsidian
+
+1. Open Obsidian → **Open folder as vault** → select `~/SecondBrain`
+2. Click the graph icon → Graph View
+
+### Step 4 — Configure Web Clipper
+
+1. Install [Obsidian Web Clipper](https://obsidian.md/clipper) in Chrome/Firefox
+2. Extension settings → set **Note location** to `raw`
+3. Test: clip any webpage → check `~/SecondBrain/raw/`
+
+### Step 5 — Install Python dependencies
+
+```bash
+brew install poppler                                              # PDF extraction
+pip3 install --break-system-packages youtube-transcript-api pypdf
+```
+
+### Step 6 — Set up YouTube bookmarklet (optional)
+
+Open `http://localhost:7331/setup` in Chrome. Drag the red **→ Brain** button to your bookmarks bar. One click on any YouTube page saves it instantly.
+
+### Step 7 — Test the pipeline
+
+```bash
+python3 ~/SecondBrain/auto_ingest.py --dry-run
+```
+
+Expected output: files detected, wiki entries previewed, no writes. Then run without `--dry-run` to process for real.
+
+### Vault structure created
+
+```
+~/SecondBrain/
+├── raw/              ← clips land here
+│   └── processed/    ← moved here after processing
+├── wiki/
+│   ├── entities/     ← people, companies, tools
+│   ├── concepts/     ← ideas, frameworks, strategies
+│   ├── sources/      ← one summary per clip
+│   ├── synthesis/    ← cross-topic insights (auto-generated)
+│   ├── index.md      ← master table of contents (auto-updated)
+│   └── log.md        ← change log
+└── outputs/          ← query and lint results
+```
 
 </details>
+
+---
+
+## ⚙️ Configuration
+
+Edit the top of `auto_ingest.py`:
+
+| Variable | Default | What it does |
+|---|---|---|
+| `MODEL` | `"gemma3:4b"` | Switch to `"qwen3.5:9b"` for better quality |
+| `MIN_HOURS` | `48` | Hours between auto-runs. Set to `24` for daily. |
+| `MAX_TOKENS` | `3000` | Max tokens per model call |
+| `RAW_CHUNK` | `3500` | Characters per clip sent to the model |
+
+To change the run time, edit `launchd/com.nitesh.secondbrain-ingest.plist` and reload:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
+launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
+```
 
 ---
 
@@ -398,49 +246,12 @@ launchctl load ~/Library/LaunchAgents/com.nitesh.secondbrain-ingest.plist
 
 ```
 second-brain-ai/
-├── README.md                                     ← you are here
-├── setup.sh                                      ← one-command installer (runs all setup steps)
-├── auto_ingest.py                                ← local AI ingest script (Ollama + Gemma 3)
-├── brain_server.py                               ← bookmarklet backend (HTTP server, port 7331)
-├── CONTRIBUTING.md                               ← how to contribute
-├── LICENSE                                       ← MIT
-├── .gitignore
-│
-├── claude-commands/                              ← copy these to ~/.claude/commands/
-│   ├── second-brain.md                           ← /second-brain (setup wizard)
-│   ├── second-brain-ingest.md                    ← /second-brain-ingest (Claude Sonnet quality)
-│   ├── second-brain-query.md                     ← /second-brain-query (ask questions)
-│   ├── second-brain-lint.md                      ← /second-brain-lint (health check)
-│   └── second-brain-synthesis.md                 ← /second-brain-synthesis (generate insight notes)
-│
-├── launchd/                                      ← macOS background agents
-│   ├── com.nitesh.secondbrain-ingest.plist       ← runs every 2 days at 4:07am
-│   └── com.nitesh.secondbrain-server.plist       ← brain_server.py, runs 24/7 (KeepAlive)
-│
-├── docs/
-│   └── screenshots/
-│       ├── README.md                             ← guide for adding screenshots
-│       └── graph-view.png                        ← hero image (Obsidian Graph View)
-│
-└── vault-template/                               ← copy everything inside into ~/SecondBrain/
-    ├── CLAUDE.md                                 ← vault instructions for Claude
-    ├── wiki/
-    │   ├── index.md                              ← master index of entries
-    │   ├── log.md                                ← ingest change log
-    │   ├── entities/                             ← people, companies, tools
-    │   │   └── .gitkeep
-    │   ├── concepts/                             ← ideas, frameworks, strategies
-    │   │   └── .gitkeep
-    │   ├── sources/                              ← one summary per clip
-    │   │   └── .gitkeep
-    │   └── synthesis/                            ← cross-topic insights
-    │       └── .gitkeep
-    ├── raw/                                      ← clips land here
-    │   ├── .gitkeep
-    │   └── processed/                            ← moved here after processing
-    │       └── .gitkeep
-    └── outputs/                                  ← query results and lint reports
-        └── .gitkeep
+├── auto_ingest.py              ← local AI ingest (Ollama + Gemma 3)
+├── brain_server.py             ← YouTube bookmarklet backend (port 7331)
+├── setup.sh                    ← one-command installer
+├── claude-commands/            ← /second-brain-* slash commands
+├── launchd/                    ← macOS scheduler + brain server agents
+└── vault-template/             ← starter vault (copy to ~/SecondBrain)
 ```
 
 ---
@@ -448,17 +259,17 @@ second-brain-ai/
 ## 🐛 Troubleshooting
 
 <details>
-<summary><b>"Ollama not reachable"</b></summary>
+<summary><b>Ollama not reachable</b></summary>
 
-Open the Ollama app (check menu bar) or run `ollama serve` in terminal.
+Open the Ollama app (check your menu bar) or run `ollama serve` in Terminal.
 </details>
 
 <details>
 <summary><b>launchd job not firing</b></summary>
 
 ```bash
-launchctl list | grep secondbrain                 # check loaded
-cat ~/SecondBrain/outputs/ingest-daemon.log       # read errors
+launchctl list | grep secondbrain       # check it's loaded
+cat ~/SecondBrain/outputs/ingest-daemon.log   # read errors
 ```
 </details>
 
@@ -469,84 +280,61 @@ Extension settings → set **Note location** to `raw` (not `Clippings`).
 </details>
 
 <details>
-<summary><b>qwen3.5 returns empty response field</b></summary>
+<summary><b>YouTube transcript fails</b></summary>
 
-Expected — qwen3 is a thinking model. The script auto-reads the `thinking` field. No action needed.
+Some videos have no captions or are region-locked. Fallback: copy the transcript from YouTube's "Show transcript" button and save as a `.md` file in `raw/`. Or use yt-dlp:
+
+```bash
+brew install yt-dlp
+yt-dlp --write-auto-sub --skip-download --sub-lang en URL
+```
 </details>
 
 <details>
-<summary><b>Wiki entries have underscores in filenames</b></summary>
+<summary><b>PDF extraction fails</b></summary>
 
-Local 4B models sometimes use underscores. Rename in Obsidian or use `/second-brain-ingest` with Claude.
+Install the dependencies:
+
+```bash
+brew install poppler
+pip3 install --break-system-packages pypdf
+```
+
+For scanned/image PDFs (no text layer): `brew install tesseract` and convert manually first.
 </details>
 
 <details>
 <summary><b>Mac was fully shut down (not sleeping)</b></summary>
 
-launchd only catches up from sleep. A full shutdown misses the run. It fires again at the next scheduled time.
+launchd only catches up from sleep. A full shutdown misses the run. It fires again at the next scheduled time. Run `python3 ~/SecondBrain/auto_ingest.py` manually to process immediately.
 </details>
 
 <details>
-<summary><b>PDF extraction fails or returns garbage text</b></summary>
+<summary><b>qwen3.5 returns empty output</b></summary>
 
-The script uses `pdftotext` (poppler) as the primary extractor with `pypdf` as fallback. If both fail:
-
-| Method | Install | When to use |
-|---|---|---|
-| **pdfplumber** | `pip3 install pdfplumber` | Better at complex tables |
-| **Tesseract OCR** | `brew install tesseract` | Scanned/image-only PDFs (no text layer) |
-| **Manual conversion** | Any Mac preview → Export as text | Quick one-off conversion |
-
-Swap it in `auto_ingest.py` inside `extract_pdf_text()`. Or just save the PDF content as a `.md` file in `raw/`.
-</details>
-
-<details>
-<summary><b>YouTube transcript fetch fails</b></summary>
-
-YouTube occasionally blocks the scraping endpoint `youtube-transcript-api` uses, or the video has no captions. Fallback options:
-
-| Method | Install | Notes |
-|---|---|---|
-| **yt-dlp** | `brew install yt-dlp` | Run `yt-dlp --write-auto-sub --skip-download URL` — saves `.vtt` file |
-| **OpenAI Whisper (local)** | `pip3 install openai-whisper` | Transcribes any video locally, free, ~1GB model |
-| **Manual paste** | None | Copy the transcript from YouTube's UI, paste into a `.md` file |
-
-The simplest fallback: copy the transcript manually from YouTube's "Show transcript" button and save it as a `.md` file in `raw/`.
-</details>
-
-<details>
-<summary><b>PDF or YouTube libraries not installed</b></summary>
-
-```bash
-pip3 install --break-system-packages pypdf youtube-transcript-api
-```
-
-The script will tell you exactly which one is missing in its error output.
+Expected — qwen3 is a thinking model. The script auto-reads the `thinking` field. No action needed.
 </details>
 
 ---
 
 ## ✅ What's Built
 
-All core features are complete and working:
-
-- [x] Web Clipper → auto-ingest pipeline (`.md`, `.pdf`, `.txt`, YouTube URLs)
-- [x] **Obsidian Web Clipper YouTube detection** — clips YouTube from any device, transcript fetched automatically via `source:` frontmatter
-- [x] **Duplicate guard** — same YouTube video captured twice (bookmarklet + Web Clipper) is silently skipped, no duplicate wiki entries
-- [x] **1-click YouTube bookmarklet** — `brain_server.py` runs on port 7331 (launchd, permanent); setup page at `http://localhost:7331/setup`
-- [x] Local AI processing via Ollama — zero cost, zero cloud
-- [x] `wiki/entities/`, `wiki/concepts/`, `wiki/sources/` auto-created with [[wikilinks]]
-- [x] `wiki/synthesis/` — cross-topic insight notes auto-generated after every ingest
-- [x] `wiki/index.md` — master table of contents, regenerated after every ingest
-- [x] macOS launchd scheduler — ingest runs every 2 days at 4am; brain server runs 24/7
-- [x] `/second-brain-ingest`, `/second-brain-query`, `/second-brain-lint`, `/second-brain-synthesis` slash commands
-- [x] `setup.sh` — one-command installer (vault, launchd agents, slash commands, brain server)
+- [x] Obsidian Web Clipper → auto-ingest (`.md`, `.pdf`, `.txt`, YouTube)
+- [x] YouTube transcript detection from Web Clipper frontmatter — works on any device
+- [x] Duplicate protection — same video captured twice is silently skipped
+- [x] 1-click YouTube bookmarklet — `brain_server.py` runs 24/7 on port 7331
+- [x] Local AI via Ollama — zero cost, zero cloud, zero API keys
+- [x] `wiki/synthesis/` — cross-topic insights auto-generated after every ingest
+- [x] `wiki/index.md` — master table of contents, auto-regenerated
+- [x] macOS launchd — ingest every 2 days at 4am, brain server always on
+- [x] 5 slash commands for Claude Code
+- [x] `setup.sh` — one-command full installer
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Windows/Linux support, better local model prompts, and new ingest sources especially appreciated.
 
@@ -554,35 +342,22 @@ Windows/Linux support, better local model prompts, and new ingest sources especi
 
 ## 🙏 Credits
 
-Built by [@NiteshTechAI](https://x.com/NiteshTechAI)
+Built by [@NiteshTechAI](https://x.com/NiteshTechAI).
 
-**Inspired by:**
-- [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain) — original system and slash commands
-- [swyx/brain](https://github.com/swyxio/brain) — public Obsidian vault
-- [Andrej Karpathy](https://x.com/karpathy) — LLM-Wiki pattern
-- [Ruben Hassid](https://ruben.substack.com) — AI productivity workflows
+Inspired by [NicholasSpisak/second-brain](https://github.com/NicholasSpisak/second-brain), [swyx/brain](https://github.com/swyxio/brain), and [Andrej Karpathy](https://x.com/karpathy).
 
-**Powered by these open-source projects:**
-- [Ollama](https://github.com/ollama/ollama) — local LLM runtime (MIT)
-- [Gemma 3](https://huggingface.co/google/gemma-3-4b-it) — Google's open model family
-- [Qwen 3.5](https://github.com/QwenLM/Qwen) — Alibaba's open model family
-- [Poppler (pdftotext)](https://poppler.freedesktop.org) — PDF extraction, industry standard (GPL-2)
-- [pypdf](https://github.com/py-pdf/pypdf) — PDF fallback (MIT)
-- [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api) — YouTube transcript fetching (MIT)
-- [Obsidian](https://obsidian.md) — local-first Markdown editor
+Powered by [Ollama](https://github.com/ollama/ollama), [Gemma 3](https://huggingface.co/google/gemma-3-4b-it), [Poppler](https://poppler.freedesktop.org), [pypdf](https://github.com/py-pdf/pypdf), [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api), and [Obsidian](https://obsidian.md).
 
 ---
 
 ## 📄 License
 
-MIT — free to use, modify, and share.
-
-If you build something cool, tag [@NiteshTechAI](https://x.com/NiteshTechAI) on X. 🚀
+MIT — free to use, modify, and share. If you build something cool with it, tag [@NiteshTechAI](https://x.com/NiteshTechAI) on X.
 
 ---
 
 <div align="center">
 
-**⭐ Star this repo** if it helps you organize your knowledge.
+**⭐ Star this repo if it helps you organize your knowledge.**
 
 </div>
