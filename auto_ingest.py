@@ -651,6 +651,11 @@ def main():
     if DRY_RUN:
         print("[DRY RUN] No files were actually written or moved.")
 
+    # Auto-run synthesis after every ingest so wiki/synthesis/ stays current
+    if session_log:
+        print("\n─── Auto-synthesis starting ───")
+        run_synthesis()
+
 
 if __name__ == "__main__":
     main()
