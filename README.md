@@ -16,10 +16,6 @@
 
 ---
 
-![Obsidian Graph View](docs/screenshots/graph-view.png)
-
-*Real output after one ingest session — 45 wiki entries, all auto-connected.*
-
 </div>
 
 ---
