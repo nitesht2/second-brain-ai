@@ -18,8 +18,10 @@ Open-source dependencies used by this script:
   - youtube-transcript-api (YouTube transcripts) — https://github.com/jdepoix/youtube-transcript-api
 
 Usage:
-    python3 auto_ingest.py           # normal run
-    python3 auto_ingest.py --dry-run # preview only, no writes
+    python3 auto_ingest.py                        # normal ingest run
+    python3 auto_ingest.py --dry-run              # preview only, no writes
+    python3 auto_ingest.py --synthesize           # synthesize wiki/ into wiki/synthesis/
+    python3 auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
 """
 
 import os
@@ -364,9 +366,223 @@ def append_log(entries: list):
         fh.write("\n".join(lines) + "\n")
 
 
+# ── Synthesis ─────────────────────────────────────────────────────────────────
+
+def collect_wiki_digests() -> list:
+    """Read all wiki entries (entities, concepts, sources) and return digest dicts.
+
+    Each digest contains:
+      stem    — filename without .md (used to match cluster output)
+      path    — absolute Path to the file
+      summary — first 300 chars of file content (enough to cluster without full text)
+    """
+    digests = []
+    for folder in ("entities", "concepts", "sources"):
+        for p in sorted((WIKI_DIR / folder).glob("*.md")):
+            text = p.read_text(encoding="utf-8", errors="ignore")
+            digests.append({
+                "stem": p.stem,
+                "path": p,
+                "summary": text[:300].replace("\n", " "),
+            })
+    return digests
+
+
+def build_cluster_prompt(digests: list) -> str:
+    """Ask Ollama to group wiki entries into 3-6 named theme clusters."""
+    entries_block = "\n".join(
+        f"{i+1}. [{d['stem']}] {d['summary']}"
+        for i, d in enumerate(digests)
+    )
+    return f"""You are organizing a personal knowledge base into thematic clusters.
+
+Below are {len(digests)} wiki entries with their names and a short preview.
+Group them into 3-6 named clusters based on shared themes.
+
+ENTRIES:
+{entries_block}
+
+OUTPUT FORMAT — use this exact pattern, nothing else:
+
+===CLUSTER: Theme Name===
+Entry Stem 1, Entry Stem 2, Entry Stem 3
+===END===
+
+Rules:
+- Every entry must appear in exactly one cluster
+- Cluster names should be 2-4 words, Title Case
+- Use the exact stem names (inside [ ] above) — no paraphrasing
+- Minimum 3 entries per cluster; merge small groups into the nearest theme
+- Output ONLY the ===CLUSTER:...===END=== blocks
+"""
+
+
+def parse_clusters(response: str) -> dict:
+    """Extract cluster_name → [entry stems] from Ollama cluster response.
+
+    Strips any surrounding brackets the model may echo (e.g. [Anthropic] → Anthropic).
+    """
+    pattern = r'===CLUSTER:\s*([^\n]+)===\n(.*?)===END==='
+    matches = re.findall(pattern, response, re.DOTALL)
+    clusters = {}
+    for name, body in matches:
+        raw_stems = re.split(r'[,\n]+', body)
+        stems = [s.strip().strip('[]').strip() for s in raw_stems if s.strip().strip('[]').strip()]
+        if stems:
+            clusters[name.strip()] = stems
+    return clusters
+
+
+def _norm(s: str) -> str:
+    """Normalize a stem for fuzzy matching: lowercase, strip all non-alphanumeric chars."""
+    return re.sub(r'[^a-z0-9]', '', s.lower())
+
+
+def build_synthesis_prompt(cluster_name: str, entries_text: str, all_stems: list) -> str:
+    """Build the synthesis prompt for a single theme cluster."""
+    all_entries_ref = "\n".join(f"  - [[{s}]]" for s in all_stems[:80])
+    today = datetime.now().strftime("%Y-%m-%d")
+    return f"""You are synthesizing insights from a personal knowledge base.
+
+THEME CLUSTER: {cluster_name}
+
+WIKI ENTRIES IN THIS CLUSTER:
+---
+{entries_text}
+---
+
+ALL KNOWN WIKI ENTRIES (use for [[wikilinks]]):
+{all_entries_ref}
+
+Your task: find what these entries reveal TOGETHER that none states alone.
+Look for shared patterns, unexpected contradictions, and a non-obvious key insight.
+
+OUTPUT FORMAT — use this exact pattern:
+
+===FILE: wiki/synthesis/Synthesis - {cluster_name}.md===
+# Synthesis: {cluster_name}
+
+## Overview
+2-3 sentences on why these entries cluster together and what domain they cover.
+
+## Shared Patterns
+- Pattern 1 (seen in [[Entry A]] and [[Entry B]])
+- Pattern 2 (seen in [[Entry C]], [[Entry D]], [[Entry E]])
+
+## Contradictions Found
+- [[Entry A]] emphasizes X, while [[Entry B]] recommends Y — resolution: ...
+
+## Key Insight
+One paragraph: the non-obvious conclusion that ONLY emerges by reading these entries together.
+
+## Actionable Takeaways
+- Concrete action 1
+- Concrete action 2
+
+## Sources Synthesized
+- [[{cluster_name.replace(' ', '-')}]]
+
+## Generated
+{today}
+===END===
+
+Output ONLY the ===FILE:...===END=== block. Use real [[wikilinks]] from the entries above.
+"""
+
+
+def run_synthesis():
+    """Two-phase synthesis: cluster all wiki entries, then synthesize each cluster."""
+    print(f"{'[DRY RUN] ' if DRY_RUN else ''}Starting wiki synthesis...")
+    print(f"Model: {MODEL}\n")
+
+    digests = collect_wiki_digests()
+    if not digests:
+        print("No wiki entries found. Ingest some raw files first.")
+        return
+
+    all_stems = [d["stem"] for d in digests]
+    print(f"Phase 1: Clustering {len(digests)} wiki entries...")
+
+    try:
+        cluster_response = call_ollama(build_cluster_prompt(digests))
+    except RuntimeError as e:
+        print(f"  ERROR: {e}")
+        print("  Ollama must be running (open Ollama.app)")
+        return
+
+    clusters = parse_clusters(cluster_response)
+    if not clusters:
+        print("  WARNING: Model returned no valid ===CLUSTER:...===END=== blocks")
+        print(f"  Raw response preview: {cluster_response[:400]}")
+        return
+
+    print(f"  Found {len(clusters)} cluster(s):\n")
+    for name, stems in clusters.items():
+        print(f"  [{name}] ({len(stems)} entries): {', '.join(stems[:4])}{'...' if len(stems) > 4 else ''}")
+    print()
+
+    # Phase 2: synthesize each cluster
+    (WIKI_DIR / "synthesis").mkdir(parents=True, exist_ok=True)
+    created_total = 0
+
+    print("Phase 2: Synthesizing each cluster...\n")
+    for cluster_name, stems in clusters.items():
+        if len(stems) < 3:
+            print(f"  Skipping [{cluster_name}] — only {len(stems)} entries (need 3+)")
+            continue
+
+        # Collect full content for entries in this cluster (fuzzy match on stem)
+        parts = []
+        matched_stems = []
+        stem_map_norm = {_norm(d["stem"]): d for d in digests}
+        for stem in stems:
+            hit = stem_map_norm.get(_norm(stem))
+            if hit:
+                text = hit["path"].read_text(encoding="utf-8", errors="ignore")
+                parts.append(f"### {hit['stem']}\n{text[:1200]}")
+                matched_stems.append(hit["stem"])
+
+        if len(matched_stems) < 3:
+            print(f"  Skipping [{cluster_name}] — fewer than 3 entries matched on disk")
+            continue
+
+        entries_text = "\n\n".join(parts)
+        print(f"  Synthesizing [{cluster_name}] from {len(matched_stems)} entries...")
+
+        try:
+            synthesis_response = call_ollama(
+                build_synthesis_prompt(cluster_name, entries_text, all_stems)
+            )
+        except RuntimeError as e:
+            print(f"    ERROR: {e}")
+            continue
+
+        pairs = parse_response(synthesis_response)
+        if not pairs:
+            print(f"    WARNING: No valid ===FILE:...===END=== in response")
+            print(f"    Preview: {synthesis_response[:300]}")
+            continue
+
+        for rel_path, md_content in pairs:
+            is_new = write_wiki_entry(rel_path, md_content)
+            status = "created" if is_new else "updated"
+            print(f"    {'+' if is_new else '~'} [{status}] {rel_path}")
+            if is_new:
+                created_total += 1
+
+    print(f"\nSynthesis done. {created_total} new synthesis entries created.")
+    if DRY_RUN:
+        print("[DRY RUN] No files were actually written.")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
+    # Synthesis mode — bypass ingest entirely
+    if "--synthesize" in sys.argv:
+        run_synthesis()
+        return
+
     PROCESSED.mkdir(parents=True, exist_ok=True)
 
     # Frequency gate: skip if run too recently (launchd fires daily, script enforces 48h gap)

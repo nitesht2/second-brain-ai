@@ -307,7 +307,7 @@ Open Obsidian — new nodes appear in the graph.
 
 ## 💬 Usage
 
-Four slash commands in Claude Code:
+Five slash commands in Claude Code:
 
 | Command | What it does | Uses tokens? |
 |---|---|:---:|
@@ -315,15 +315,18 @@ Four slash commands in Claude Code:
 | `/second-brain-ingest` | Process raw clips with Claude Sonnet (best quality) | Yes |
 | `/second-brain-query [question]` | Ask questions, get cited answers from your wiki | Yes |
 | `/second-brain-lint` | Health check: broken links, orphans, stubs, gaps | Yes |
+| `/second-brain-synthesis` | Cluster wiki into themes and generate insight notes | No |
 
 **Plus the free local script:**
 
 ```bash
-python3 ~/SecondBrain/auto_ingest.py           # run manually
-python3 ~/SecondBrain/auto_ingest.py --dry-run # preview only
+python3 ~/SecondBrain/auto_ingest.py                        # run ingest manually
+python3 ~/SecondBrain/auto_ingest.py --dry-run              # preview ingest, no writes
+python3 ~/SecondBrain/auto_ingest.py --synthesize           # generate wiki/synthesis/ entries
+python3 ~/SecondBrain/auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
 ```
 
-The local script runs automatically every 2 days — you rarely need to run it by hand.
+The ingest script runs automatically every 2 days. Run `--synthesize` manually after you've added a batch of new clips.
 
 ---
 
@@ -520,7 +523,7 @@ The script will tell you exactly which one is missing in its error output.
 - [ ] Windows support (Task Scheduler)
 - [ ] Linux cron setup guide
 - [ ] Auto-update `wiki/index.md` after every ingest
-- [ ] `wiki/synthesis/` auto-generation
+- [x] `wiki/synthesis/` auto-generation ✅
 - [x] PDF + YouTube transcript ingestion ✅
 - [ ] Discord/Slack notification on ingest completion
 - [ ] Web dashboard to browse vault without Obsidian
