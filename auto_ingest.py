@@ -70,6 +70,13 @@ KIMI_API_KEY    = os.environ.get("KIMI_API_KEY", "")
 KIMI_MODEL      = "kimi-k2-0905-preview"
 KIMI_BASE_URL   = "https://api.moonshot.ai/v1/chat/completions"
 
+# Kimi K2 pricing per 1M tokens (as of 2026)
+KIMI_INPUT_PRICE_PER_M  = 0.15
+KIMI_OUTPUT_PRICE_PER_M = 2.50
+
+# Running tallies for the current ingest session
+_SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
+
 DRY_RUN     = "--dry-run" in sys.argv
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -340,6 +347,11 @@ def call_kimi(prompt: str) -> str:
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = json.loads(resp.read())
+            # Track usage for cost reporting
+            usage = body.get("usage", {})
+            _SESSION_TOKENS["input"]  += usage.get("prompt_tokens", 0)
+            _SESSION_TOKENS["output"] += usage.get("completion_tokens", 0)
+            _SESSION_TOKENS["calls"]  += 1
             return body["choices"][0]["message"]["content"].strip()
     except urllib.error.URLError as e:
         raise RuntimeError(f"Kimi API not reachable: {e}")
@@ -472,6 +484,31 @@ def write_wiki_entry(rel_path: str, content: str) -> bool:
         if not DRY_RUN:
             full_path.write_text(content)
         return True        # new file
+
+
+def append_cost_log():
+    """Write token usage and $ cost to outputs/cost-log.md for this session.
+
+    Only runs when provider=kimi (Ollama is free). Appends one row per run.
+    """
+    if PROVIDER != "kimi" or DRY_RUN or _SESSION_TOKENS["calls"] == 0:
+        return
+    in_tok  = _SESSION_TOKENS["input"]
+    out_tok = _SESSION_TOKENS["output"]
+    cost = (in_tok / 1_000_000 * KIMI_INPUT_PRICE_PER_M) + \
+           (out_tok / 1_000_000 * KIMI_OUTPUT_PRICE_PER_M)
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    log = VAULT / "outputs" / "cost-log.md"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    if not log.exists():
+        log.write_text(
+            "# Kimi K2 Cost Log\n\n"
+            "| Date | Calls | Input tokens | Output tokens | Cost (USD) |\n"
+            "|---|---|---|---|---|\n"
+        )
+    with open(log, "a") as fh:
+        fh.write(f"| {stamp} | {_SESSION_TOKENS['calls']} | {in_tok:,} | {out_tok:,} | ${cost:.4f} |\n")
+    print(f"  💰 Kimi cost this run: ${cost:.4f} ({in_tok:,} in + {out_tok:,} out across {_SESSION_TOKENS['calls']} calls)")
 
 
 def append_log(entries: list):
@@ -857,6 +894,9 @@ def main():
     # Always regenerate index so it reflects current vault state
     print("\n─── Updating wiki/index.md ───")
     update_wiki_index()
+
+    # Log token usage + $ cost (Kimi only; Ollama is free)
+    append_cost_log()
 
 
 if __name__ == "__main__":
