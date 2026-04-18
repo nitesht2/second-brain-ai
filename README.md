@@ -56,13 +56,13 @@
                ↓
 ⏰ Every 2 days at 4am  (automatic, macOS launchd)
                ↓
-🤖 Local AI processes each clip  (Ollama + Gemma 3, completely free)
-               ↓
-🗂️  Wiki entries auto-created:
+🤖 Step 1 — Ingest  (Ollama + Gemma 3, completely free)
     wiki/entities/   → people, companies, tools
     wiki/concepts/   → ideas, frameworks, strategies
     wiki/sources/    → one summary per clip
-    wiki/synthesis/  → cross-topic connections
+               ↓ auto
+🧩 Step 2 — Synthesis  (runs immediately after ingest, no extra setup)
+    wiki/synthesis/  → cross-topic patterns, contradictions, key insights
                ↓
 🔗 Everything linked with [[wikilinks]]
                ↓
@@ -71,7 +71,7 @@
 💬 /second-brain-query answers questions with citations
 ```
 
-**Zero cost for daily processing. Zero manual effort. If your Mac was asleep — it catches up automatically.**
+**Zero cost. Zero manual effort. Drop files in raw/ — wake up to a fully connected, synthesized knowledge graph.**
 
 ### 📥 Supported Input Formats
 
@@ -326,7 +326,7 @@ python3 ~/SecondBrain/auto_ingest.py --synthesize           # generate wiki/synt
 python3 ~/SecondBrain/auto_ingest.py --synthesize --dry-run # preview synthesis, no writes
 ```
 
-The ingest script runs automatically every 2 days. Run `--synthesize` manually after you've added a batch of new clips.
+Both run automatically every 2 days via launchd — ingest first, then synthesis immediately after. You never need to run either manually unless you want to trigger it on demand.
 
 ---
 
