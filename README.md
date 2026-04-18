@@ -65,6 +65,8 @@
     wiki/synthesis/  → cross-topic patterns, contradictions, key insights
                ↓
 🔗 Everything linked with [[wikilinks]]
+               ↓ auto
+📋 wiki/index.md regenerated  (master table of contents, 1 click to any entry)
                ↓
 🌐 Obsidian graph view renders your knowledge map
                ↓
@@ -522,7 +524,7 @@ The script will tell you exactly which one is missing in its error output.
 
 - [ ] Windows support (Task Scheduler)
 - [ ] Linux cron setup guide
-- [ ] Auto-update `wiki/index.md` after every ingest
+- [x] Auto-update `wiki/index.md` after every ingest ✅
 - [x] `wiki/synthesis/` auto-generation ✅
 - [x] PDF + YouTube transcript ingestion ✅
 - [ ] Discord/Slack notification on ingest completion
