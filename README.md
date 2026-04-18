@@ -64,6 +64,8 @@ This flips it: **clip once, AI organizes overnight.** Everything you read and wa
 |---|---|---|
 | **YouTube video** | Obsidian Web Clipper or → Brain bookmarklet | Full transcript fetched automatically |
 | **Article / blog** | Obsidian Web Clipper | Full page content processed |
+| **TikTok / Instagram** | Obsidian Web Clipper | Description + caption processed. For full transcript, run `auto_ingest.py --save <URL>` (Whisper transcription via whisper.cpp on Metal GPU) |
+| **Twitter / X post** | Obsidian Web Clipper | Tweet text + thread processed (no video transcript) |
 | **PDF** | Drop into `raw/` folder | Text extracted via pdftotext, fallback to pypdf |
 | **Plain text / notes** | Drop `.txt` into `raw/` | Read as-is |
 
@@ -110,10 +112,11 @@ Five slash commands in Claude Code:
 **Local script (free, no tokens):**
 
 ```bash
-python3 ~/SecondBrain/auto_ingest.py                        # run ingest now
-python3 ~/SecondBrain/auto_ingest.py --dry-run              # preview, no writes
-python3 ~/SecondBrain/auto_ingest.py --synthesize           # generate synthesis notes
-python3 ~/SecondBrain/auto_ingest.py --synthesize --dry-run # preview synthesis
+python3 ~/SecondBrain/auto_ingest.py                                # run ingest now
+python3 ~/SecondBrain/auto_ingest.py --dry-run                      # preview, no writes
+python3 ~/SecondBrain/auto_ingest.py --synthesize                   # generate synthesis notes
+python3 ~/SecondBrain/auto_ingest.py --synthesize --force-synthesis # regenerate ALL clusters
+python3 ~/SecondBrain/auto_ingest.py --save <TikTok or Instagram URL> # download + transcribe
 ```
 
 The local script runs automatically every 2 days. Use slash commands when you want higher quality output (Claude Sonnet vs Gemma 3) or want to query your wiki.
@@ -238,9 +241,34 @@ export SECOND_BRAIN_PROVIDER=kimi
 export KIMI_API_KEY=your_key_here
 ```
 
-Kimi K2 costs roughly $0.005 per ingest run and produces noticeably better wiki entries. If Kimi is unavailable (API down, bad key), it automatically falls back to Ollama, so ingest never silently fails.
+Kimi K2 costs roughly $0.04 per ingest run (~$7/year at every-2-days cadence) and produces noticeably better wiki entries. If Kimi is unavailable (API down, bad key), it automatically falls back to Ollama, so ingest never silently fails.
 
-To get a Kimi API key: [platform.moonshot.cn](https://platform.moonshot.cn) (or check your `hermes-agent/.env` if you already have one).
+To get a Kimi API key: [platform.moonshot.cn](https://platform.moonshot.cn).
+
+### Cost caps (only matter if using Kimi)
+
+Two budget guardrails kick in automatically. No config needed unless you want to change the limits:
+
+| Cap | Default | What happens when exceeded |
+|---|---|---|
+| **Per-run** | `$1.00` | 🛑 Run halts mid-flight + macOS notification (safety for runaway bugs) |
+| **Monthly cumulative** | `$5.00` | 🔄 Auto-downgrades to free Ollama for the rest of the month + notification |
+
+Override with env vars:
+```bash
+export COST_CAP_USD=2.00              # raise per-run safety cap to $2
+export COST_CAP_MONTHLY_USD=10.00     # raise monthly budget to $10
+```
+
+Kimi token usage and $ cost per run are appended to `~/SecondBrain/outputs/cost-log.md` for auditing.
+
+### Incremental synthesis
+
+Only clusters whose member entries changed since the last synthesis get re-synthesized. Typically **3-5x cheaper** at steady state because most clusters don't change day-to-day. To force a full regeneration:
+
+```bash
+python3 ~/SecondBrain/auto_ingest.py --synthesize --force-synthesis
+```
 
 To change the run time, edit `launchd/com.nitesh.secondbrain-ingest.plist` and reload:
 

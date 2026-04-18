@@ -30,7 +30,16 @@
     <key>StandardErrorPath</key>
     <string>/Users/nitesh/SecondBrain/outputs/ingest-daemon.log</string>
 
-    <!-- Only run if Ollama is reachable — script handles gracefully if not -->
+    <!-- Default: free Ollama (Gemma 3). To use Kimi K2 instead, copy this
+         plist to ~/Library/LaunchAgents/ and add these two env vars below PATH.
+         NEVER commit the Kimi key to git — the ~/Library/LaunchAgents/ copy
+         is private to your machine.
+
+             <key>SECOND_BRAIN_PROVIDER</key>
+             <string>kimi</string>
+             <key>KIMI_API_KEY</key>
+             <string>sk-YOUR_KIMI_KEY_HERE</string>
+    -->
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

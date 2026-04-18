@@ -263,6 +263,29 @@ def download_and_transcribe(url: str) -> bool:
     return True
 
 
+def get_transcript(url: str) -> str:
+    """
+    Download and transcribe a TikTok or Instagram video, returning the transcript
+    as a plain string. Used by auto_ingest.py extract_content() for Web Clipper files.
+    Returns empty string on failure (caller falls back to clipper content).
+    """
+    platform = detect_platform(url)
+    if platform == "unknown":
+        return ""
+
+    print(f"  ▶ {platform.capitalize()} URL detected in frontmatter — intercepting video...")
+    cdn_url = intercept_video_url(url)
+    if not cdn_url:
+        print(f"  ⚠ Could not intercept video — using clipper description only.")
+        return ""
+
+    with tempfile.TemporaryDirectory() as tmp:
+        video_path = Path(tmp) / "video.mp4"
+        if not download_video(cdn_url, video_path):
+            return ""
+        return transcribe(video_path)
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python3 social_downloader.py <TikTok or Instagram URL>")

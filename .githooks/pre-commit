@@ -1,0 +1,11 @@
+#!/bin/bash
+# Block accidental API key commits.
+# Install with: git config core.hooksPath .githooks
+
+# Match: OpenAI-style keys (sk-...), generic 32+ char secrets in "KEY=..." format
+if git diff --cached | grep -E 'sk-[A-Za-z0-9]{20,}|API_KEY\s*=\s*["'\''][A-Za-z0-9]{20,}' > /dev/null; then
+    echo "❌ Blocked: staged changes contain what looks like an API key."
+    echo "   Remove the secret, or use an env var, then re-stage."
+    exit 1
+fi
+exit 0
