@@ -46,6 +46,7 @@ VAULT       = Path.home() / "SecondBrain"
 RAW_DIR     = VAULT / "raw"
 PROCESSED   = RAW_DIR / "processed"
 WIKI_DIR    = VAULT / "wiki"
+BRAND_DIR   = VAULT / "brand"  # Brand Foundation (voice, style, banned words, positioning, audience)
 LOG_FILE    = VAULT / "outputs" / "ingest-log.md"
 
 OLLAMA_URL      = "http://127.0.0.1:11434/api/generate"
@@ -447,6 +448,27 @@ def call_llm(prompt: str) -> str:
     return call_ollama(prompt)
 
 
+def load_brand_foundation() -> str:
+    """Read all files in brand/ and concatenate into a single string.
+
+    Brand Foundation (BF) is the static layer that tells agents how the human
+    sounds before producing anything. Agents read this but never modify it.
+
+    Returns empty string if brand/ doesn't exist (graceful — BF is optional).
+    """
+    if not BRAND_DIR.exists():
+        return ""
+    parts = []
+    for p in sorted(BRAND_DIR.glob("*.md")):
+        try:
+            parts.append(f"### {p.stem.replace('-', ' ').title()}\n\n{p.read_text(encoding='utf-8').strip()}")
+        except OSError:
+            continue
+    if not parts:
+        return ""
+    return "\n\n".join(parts)
+
+
 def build_prompt(content: str, filename: str, existing: list) -> str:
     """Build the ingest prompt, injecting existing wiki names for wikilinks."""
     existing_sample = "\n".join(f"  - [[{e}]]" for e in existing[:60])
@@ -454,9 +476,15 @@ def build_prompt(content: str, filename: str, existing: list) -> str:
     if len(content) > RAW_CHUNK:
         snippet += "\n... [truncated]"
 
+    brand = load_brand_foundation()
+    brand_section = f"""
+BRAND FOUNDATION (read before writing anything — this is how the human sounds):
+{brand}
+""" if brand else ""
+
     return f"""You are a knowledge base curator for an Obsidian wiki vault.
 Your job: read a raw note and output structured wiki entries.
-
+{brand_section}
 EXISTING WIKI ENTRIES (prefer linking to these):
 {existing_sample}
 
@@ -473,10 +501,17 @@ OUTPUT INSTRUCTIONS:
 - Every entry MUST have at least 2 [[wikilinks]] using Title Case
 - Prefer [[wikilinks]] that match EXISTING entries listed above
 - Be concise and factual
+- Follow the BRAND FOUNDATION above: no em dashes, no banned phrases, match the voice rules.
+- Add a `confidence:` frontmatter field with value high/medium/low/uncertain based on source quality.
+- Include a `## Counter-arguments` section naming what the source might be missing or what a skeptic would say.
 
 OUTPUT FORMAT — use this exact delimiter pattern, nothing else:
 
 ===FILE: wiki/sources/Source Name Here.md===
+---
+confidence: high
+explored: false
+---
 # Source Name Here
 
 ## Summary
@@ -485,6 +520,10 @@ OUTPUT FORMAT — use this exact delimiter pattern, nothing else:
 ## Key Points
 - bullet point 1
 - bullet point 2
+
+## Counter-arguments
+- What the source might be missing
+- What a skeptic would push back on
 
 ## Connections
 - Related to: [[Existing Entry]]
@@ -498,6 +537,10 @@ OUTPUT FORMAT — use this exact delimiter pattern, nothing else:
 ===END===
 
 ===FILE: wiki/entities/Person Or Tool Name.md===
+---
+confidence: high
+explored: false
+---
 # Person Or Tool Name
 
 ## Summary
@@ -505,6 +548,9 @@ Who or what this is.
 
 ## Key Points
 - key point
+
+## Counter-arguments
+- Known limitations or critiques of this entity/tool
 
 ## Connections
 - Related to: [[Concept]]
@@ -698,8 +744,13 @@ def build_synthesis_prompt(cluster_name: str, entries_text: str, all_stems: list
     """Build the synthesis prompt for a single theme cluster."""
     all_entries_ref = "\n".join(f"  - [[{s}]]" for s in all_stems[:80])
     today = datetime.now().strftime("%Y-%m-%d")
+    brand = load_brand_foundation()
+    brand_section = f"""
+BRAND FOUNDATION (read before writing — match this voice, follow these rules):
+{brand}
+""" if brand else ""
     return f"""You are synthesizing insights from a personal knowledge base.
-
+{brand_section}
 THEME CLUSTER: {cluster_name}
 
 WIKI ENTRIES IN THIS CLUSTER:
