@@ -449,10 +449,15 @@ def call_llm(prompt: str) -> str:
 
 
 def load_brand_foundation() -> str:
-    """Read all files in brand/ and concatenate into a single string.
+    """Read brand/ files and concatenate into a single string.
 
     Brand Foundation (BF) is the static layer that tells agents how the human
     sounds before producing anything. Agents read this but never modify it.
+
+    Token-saving convention:
+      - Files starting with `_` (e.g. `_anti-ai-writing-full.md`) are treated as
+        REFERENCE-ONLY and skipped. Store large source documents with `_` prefix
+        and distill the key rules into a shorter sibling file.
 
     Returns empty string if brand/ doesn't exist (graceful — BF is optional).
     """
@@ -460,6 +465,8 @@ def load_brand_foundation() -> str:
         return ""
     parts = []
     for p in sorted(BRAND_DIR.glob("*.md")):
+        if p.name.startswith("_"):
+            continue  # reference docs — don't burn tokens on them
         try:
             parts.append(f"### {p.stem.replace('-', ' ').title()}\n\n{p.read_text(encoding='utf-8').strip()}")
         except OSError:
