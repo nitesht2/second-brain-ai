@@ -67,6 +67,7 @@ This flips it: **clip once, AI organizes overnight.** Everything you read and wa
 | **TikTok / Instagram** | Obsidian Web Clipper | Description + caption processed. For full transcript, run `auto_ingest.py --save <URL>` (Whisper transcription via whisper.cpp on Metal GPU) |
 | **Twitter / X post** | Obsidian Web Clipper | Tweet text + thread processed (no video transcript) |
 | **PDF** | Drop into `raw/` folder | Text extracted via pdftotext, fallback to pypdf |
+| **GitHub repo** | Drop a `.txt` with the repo URL into `raw/` | README fetched automatically via raw.githubusercontent.com, no API key needed |
 | **Plain text / notes** | Drop `.txt` into `raw/` | Read as-is |
 
 **Cross-device:** Obsidian Web Clipper works on any device (phone, work computer). Files sync to your Mac via Obsidian Sync — ingest picks them up automatically.
@@ -358,6 +359,7 @@ Expected — qwen3 is a thinking model. The script auto-reads the `thinking` fie
 
 - [x] Obsidian Web Clipper → auto-ingest (`.md`, `.pdf`, `.txt`, YouTube)
 - [x] YouTube transcript detection from Web Clipper frontmatter — works on any device
+- [x] GitHub repo capture — drop a URL `.txt`, README fetched automatically
 - [x] Duplicate protection — same video captured twice is silently skipped
 - [x] 1-click YouTube bookmarklet — `brain_server.py` runs 24/7 on port 7331
 - [x] Local AI via Ollama — zero cost, zero cloud, zero API keys
