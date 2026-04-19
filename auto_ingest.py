@@ -46,8 +46,15 @@ VAULT       = Path.home() / "SecondBrain"
 RAW_DIR     = VAULT / "raw"
 PROCESSED   = RAW_DIR / "processed"
 WIKI_DIR    = VAULT / "wiki"
-BRAND_DIR   = VAULT / "brand"  # Brand Foundation (voice, style, banned words, positioning, audience)
 LOG_FILE    = VAULT / "outputs" / "ingest-log.md"
+
+# Brand Foundation lives in ~/.claude/voice/ (Claude Code's config directory —
+# permanent location that survives vault moves/deletions). Override via
+# NITESH_VOICE_PATH env var if you keep voice files elsewhere.
+BRAND_DIR   = Path(os.environ.get(
+    "NITESH_VOICE_PATH",
+    str(Path.home() / ".claude" / "voice"),
+))
 
 OLLAMA_URL      = "http://127.0.0.1:11434/api/generate"
 MODEL           = "gemma3:4b"         # reliable structured output; qwen3.5:* also works (answer is in 'thinking' field)
@@ -269,6 +276,49 @@ def fetch_youtube_transcript(url: str) -> str:
         return ""
 
 
+def fetch_github_readme(url: str) -> str:
+    """Fetch the README from a public GitHub repo URL.
+
+    Tries README.md on HEAD branch via raw.githubusercontent.com.
+    No API key required for public repos.
+
+    Supported URL formats:
+        https://github.com/owner/repo
+        https://github.com/owner/repo/tree/main
+        github.com/owner/repo  (no scheme)
+    """
+    import re as _re
+    # Normalize URL — strip scheme, trailing slashes, tree/branch paths
+    clean = url.strip().rstrip("/")
+    clean = _re.sub(r'^https?://', '', clean)
+    parts = clean.split("/")  # ["github.com", "owner", "repo", ...]
+    if len(parts) < 3 or parts[0] != "github.com":
+        print(f"  ⚠ Not a valid GitHub repo URL: {url}")
+        return url  # fall back to raw text so ingest still runs
+
+    owner, repo = parts[1], parts[2]
+    repo = repo.rstrip(".git")
+
+    for branch in ("HEAD", "main", "master"):
+        raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/README.md"
+        try:
+            req = urllib.request.Request(raw_url, headers={"User-Agent": "second-brain-ingest/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    readme = resp.read().decode("utf-8", errors="ignore")
+                    print(f"  ▶ GitHub README fetched: {owner}/{repo} ({branch})")
+                    return (
+                        f"# GitHub Repo: {owner}/{repo}\n\n"
+                        f"Source: https://github.com/{owner}/{repo}\n\n"
+                        f"{readme}"
+                    )
+        except Exception:
+            continue
+
+    print(f"  ⚠ Could not fetch README for {owner}/{repo} — storing URL only.")
+    return f"# GitHub Repo: {owner}/{repo}\n\nSource: {url}\n\n(README not found)"
+
+
 def is_already_ingested(video_id: str) -> bool:
     """Return True if a YouTube video ID already exists in any wiki/sources/ entry.
 
@@ -341,6 +391,9 @@ def extract_content(file_path) -> str:
         if "youtube.com/watch" in raw or "youtu.be/" in raw:
             url = raw.splitlines()[0].strip()
             return fetch_youtube_transcript(url)
+        if "github.com/" in raw:
+            url = raw.splitlines()[0].strip()
+            return fetch_github_readme(url)
         return raw
 
     return ""
