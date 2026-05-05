@@ -51,6 +51,14 @@ That's it. The setup script:
 3. The file watcher picks it up and triggers ingestion
 4. Browse `wiki/` in Obsidian to see your knowledge graph
 
+### Manual clipping (browser)
+
+Not everything comes from automated feeds. For articles, threads, and videos you find while browsing, two options:
+
+**Obsidian Web Clipper** — browser extension (Chrome, Firefox, Safari). One click saves any article as markdown directly into your vault. Set the vault path to `~/SecondBrain` and the save folder to `raw/`. The file watcher picks it up and it gets ingested on the next cycle. [Install from obsidian.md/clipper](https://obsidian.md/clipper)
+
+**Bookmarklet** — one-click save from any browser tab. After `setup.sh` a local server runs on port 7331. Drag the bookmarklet to your bookmarks bar, click it on any page, and the URL + title land in `raw/`. The bookmarklet code is shown at the end of `./setup.sh` output, or run `cat ~/SecondBrain/brain_server.py` for the save endpoint.
+
 ---
 
 ## 🏗 Architecture
