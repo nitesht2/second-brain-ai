@@ -1,7 +1,7 @@
 #!/bin/bash
 # Second Brain — nightly local + GitHub backup
 # Local: ~/Backups/SecondBrain/ (3-day rolling window)
-# Remote: github.com/nitesht2/second-brain-vault (infinite git history)
+# Remote: set SECOND_BRAIN_REPO or your git remote (private git history)
 
 set -e
 VAULT="$HOME/SecondBrain"
