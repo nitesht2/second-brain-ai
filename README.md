@@ -137,6 +137,20 @@ The local script runs automatically every 2 days. Use slash commands when you wa
 
 ---
 
+### ⚡ Kanban Dispatch (Hermes Agent users)
+
+If you run [Hermes Agent](https://github.com/NousResearch/hermes-agent), this pipeline integrates directly with the kanban system:
+
+- A cron job creates an ingest task every 6 hours
+- The kanban dispatcher spawns an isolated agent per task
+- After processing, the agent writes an episodic session record
+- A distillation heartbeat extracts new concepts into the wiki automatically
+- Optional: project scan that watches your CLAUDE.md and README.md files
+
+Files land in `raw/`, the file watcher creates a task, the agent processes, wiki updates. No manual anything.
+
+---
+
 ## 📦 Prerequisites
 
 | Tool | Purpose | Download |

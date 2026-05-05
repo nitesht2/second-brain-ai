@@ -3,11 +3,13 @@
 Second Brain Auto-Ingest
 
 Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
-using Ollama (free, local) or Kimi K2 API (paid, better quality).
+using OpenRouter (free Gemma 3 27B), Ollama (free, local Gemma 3 4B),
+or Kimi K2 API (paid, better quality).
 
-Provider selection (default: ollama):
-    export SECOND_BRAIN_PROVIDER=kimi      # use Kimi K2, auto-fallback to Gemma 3
-    export SECOND_BRAIN_PROVIDER=ollama    # local Gemma 3 only (default)
+Provider selection (default: openrouter):
+    export SECOND_BRAIN_PROVIDER=openrouter  # use OpenRouter (Gemma 3 27B free), fallback to Ollama
+    export SECOND_BRAIN_PROVIDER=kimi        # use Kimi K2, auto-fallback to Ollama
+    export SECOND_BRAIN_PROVIDER=ollama      # local Gemma 3 4B only
 
 Supported input formats:
   .md    → markdown clips (Web Clipper output) — best for social media (TikTok, Instagram, Twitter)
@@ -42,7 +44,10 @@ from datetime import datetime
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-VAULT       = Path.home() / "SecondBrain"
+VAULT       = Path(os.environ.get(
+    "SECOND_BRAIN_PATH",
+    str(Path.home() / "SecondBrain"),
+))
 RAW_DIR     = VAULT / "raw"
 PROCESSED   = RAW_DIR / "processed"
 WIKI_DIR    = VAULT / "wiki"
@@ -65,30 +70,31 @@ LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
 MIN_HOURS       = 48                  # skip if last run was less than this many hours ago
 
 # ── Provider config ───────────────────────────────────────────────────────────
-# Switch between local Ollama (free) and Kimi K2 API (~$0.005/run, better quality)
+# Switch between OpenRouter (free Gemma 3 27B via API) and local Ollama (free Gemma 3 4B).
 #
-#   To use Kimi:
-#     export SECOND_BRAIN_PROVIDER=kimi
-#     export KIMI_API_KEY=your_key_here
+#   To use OpenRouter (default):
+#     export SECOND_BRAIN_PROVIDER=openrouter   (or just don't set it)
+#     export OPENROUTER_API_KEY=sk-...          (required)
 #
-#   To use Ollama (default, free):
-#     export SECOND_BRAIN_PROVIDER=ollama   (or just don't set it)
+#   To use local Ollama:
+#     export SECOND_BRAIN_PROVIDER=ollama
+#
+# OpenRouter fallback: if OpenRouter fails, auto-falls back to local Ollama.
 
-PROVIDER        = os.environ.get("SECOND_BRAIN_PROVIDER", "ollama").lower()
-KIMI_API_KEY    = os.environ.get("KIMI_API_KEY", "")
-KIMI_MODEL      = "kimi-k2-0905-preview"
-KIMI_BASE_URL   = "https://api.moonshot.ai/v1/chat/completions"
+PROVIDER            = os.environ.get("SECOND_BRAIN_PROVIDER", "openrouter").lower()
+OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
 
-# Kimi K2 pricing per 1M tokens (as of 2026)
-KIMI_INPUT_PRICE_PER_M  = 0.15
-KIMI_OUTPUT_PRICE_PER_M = 2.50
+# ── OpenRouter config ──
+OPENROUTER_MODEL    = "google/gemma-3-27b-it:free"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Hard cost cap per ingest run. Exceeding this halts the run and fires
-# a macOS notification. A typical run costs ~$0.04-$0.10, so $1.00 is a
-# ~20x safety margin that still prevents runaway bugs (e.g. 100 clips,
-# huge prompts, retry loops). Override with env var COST_CAP_USD.
-COST_CAP_USD         = float(os.environ.get("COST_CAP_USD", "1.00"))
+# ── Ollama config (fallback) ──
+OLLAMA_URL          = "http://127.0.0.1:11434/api/generate"
+OLLAMA_MODEL        = "gemma3:4b"
 
+MODEL               = "gemma3:4b"         # used by call_ollama, kept for backward compat
+TEMPERATURE         = 0.2                 # low = more consistent structure
+MAX_TOKENS       = 3000
 # Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
 # free Ollama/Gemma 3 for the rest of the calendar month so clips still
 # get processed — you just stop paying. Resets on the 1st of each month.
@@ -437,66 +443,50 @@ def call_ollama(prompt: str) -> str:
         raise RuntimeError(f"Ollama not reachable: {e}")
 
 
-def call_kimi(prompt: str) -> str:
-    """Call Kimi K2 API (OpenAI-compatible). ~$0.005 per ingest run, better quality than Gemma 3."""
-    if not KIMI_API_KEY:
-        raise RuntimeError("KIMI_API_KEY not set. Run: export KIMI_API_KEY=your_key")
+def call_openrouter(prompt: str) -> str:
+    """Call OpenRouter API (OpenAI-compatible). Uses google/gemma-3-27b-it:free.
+    Falls back to local Ollama if OpenRouter fails or API key is missing."""
+    if not OPENROUTER_API_KEY:
+        print("  ⚠ OPENROUTER_API_KEY not set — falling back to Ollama")
+        return call_ollama(prompt)
 
     payload = json.dumps({
-        "model": KIMI_MODEL,
+        "model": OPENROUTER_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": TEMPERATURE,
         "max_tokens": MAX_TOKENS,
     }).encode()
 
     req = urllib.request.Request(
-        KIMI_BASE_URL,
+        OPENROUTER_BASE_URL,
         data=payload,
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {KIMI_API_KEY}",
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         },
         method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = json.loads(resp.read())
-            # Track usage for cost reporting
-            usage = body.get("usage", {})
-            _SESSION_TOKENS["input"]  += usage.get("prompt_tokens", 0)
-            _SESSION_TOKENS["output"] += usage.get("completion_tokens", 0)
-            _SESSION_TOKENS["calls"]  += 1
-
-            # Hard cost cap — halt the run if we cross the threshold
-            cost_so_far = _session_cost()
-            if cost_so_far > COST_CAP_USD:
-                raise CostCapExceeded(
-                    f"Kimi session cost ${cost_so_far:.4f} exceeded cap ${COST_CAP_USD:.2f} "
-                    f"after {_SESSION_TOKENS['calls']} calls"
-                )
             return body["choices"][0]["message"]["content"].strip()
     except urllib.error.URLError as e:
-        raise RuntimeError(f"Kimi API not reachable: {e}")
+        raise RuntimeError(f"OpenRouter API not reachable: {e}")
     except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Kimi API response: {e}")
+        raise RuntimeError(f"Unexpected OpenRouter API response: {e}")
 
 
 def call_llm(prompt: str) -> str:
-    """Route to Kimi or Ollama based on SECOND_BRAIN_PROVIDER env var.
+    """Route to OpenRouter or Ollama based on SECOND_BRAIN_PROVIDER env var.
 
-    If SECOND_BRAIN_PROVIDER=kimi and the Kimi call fails for any reason,
-    automatically falls back to local Ollama (Gemma 3) so ingest never
-    silently fails just because the API is down.
+    If OpenRouter fails for any reason, automatically falls back to local
+    Ollama (Gemma 3) so ingest never silently fails.
     """
-    if PROVIDER == "kimi":
+    if PROVIDER == "openrouter":
         try:
-            return call_kimi(prompt)
-        except CostCapExceeded:
-            # Don't fall back — the whole point of the cap is to STOP.
-            # Bubble up so the main loop can halt and notify the user.
-            raise
+            return call_openrouter(prompt)
         except RuntimeError as e:
-            print(f"  ⚠ Kimi failed ({e}) — falling back to Ollama/Gemma 3")
+            print(f"  ⚠ OpenRouter failed ({e}) — falling back to Ollama/Gemma 3")
             return call_ollama(prompt)
     return call_ollama(prompt)
 
