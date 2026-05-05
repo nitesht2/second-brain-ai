@@ -75,7 +75,7 @@ MISSING=0
 if [ -f "/Applications/Obsidian.app/Contents/MacOS/Obsidian" ]; then
     echo "    ✓ Obsidian installed"
 else
-    echo "    ⚠ Obsidian not found. Install from https://obsidian.md"
+    echo "    ⚠ Obsidian not found. Download from https://obsidian.md (free)"
     MISSING=1
 fi
 

@@ -43,7 +43,7 @@ That's it. The setup script:
 3. Sets up 3 launchd services (ingest, file watcher, daily digest)
 4. Copies the file watcher and daily digest scripts
 
-**Prerequisites:** macOS, Python 3, Obsidian (free), Homebrew
+**Prerequisites:** macOS, Python 3, [Obsidian](https://obsidian.md) (free, download it), Homebrew
 
 **After setup:**
 1. Open Obsidian → Open folder as vault → select `~/SecondBrain`
