@@ -8,7 +8,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>$HOME/.hermes/venv/bin/python3</string>
+        <string>/usr/bin/python3</string>
         <string>$HOME/.hermes/scripts/daily_digest.py</string>
     </array>
 

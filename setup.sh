@@ -19,18 +19,26 @@ echo "📁 Step 1/7: Creating vault at $VAULT..."
 mkdir -p "$VAULT"/{raw/processed,raw/generated,wiki/{entities,concepts,sources,synthesis},wiki/episodic,wiki/projects,outputs}
 echo "    ✓ Done"
 
-# Step 2: Copy vault template
-echo "📋 Step 2/7: Copying vault template files..."
+# Step 2: Set up directories early (needed for script copies)
+echo "📋 Step 2/7: Setting up directories..."
+mkdir -p "$HOME/.hermes/scripts"
+mkdir -p "$HOME/.hermes/data/feeds"
+echo '{}' > "$HOME/.hermes/data/feeds/seen.json"
+echo "    ✓ Done"
+
+# Step 3: Copy vault template and scripts
+echo "📋 Step 3/7: Copying vault template and scripts..."
 cp -n "$REPO_DIR/vault-template/CLAUDE.md" "$VAULT/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/index.md" "$VAULT/wiki/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/log.md" "$VAULT/wiki/" 2>/dev/null || true
 cp "$REPO_DIR/auto_ingest.py" "$VAULT/"
 cp "$REPO_DIR/scripts/daily_digest.py" "$HOME/.hermes/scripts/"
 cp "$REPO_DIR/scripts/file_watcher.sh" "$HOME/.hermes/scripts/"
+chmod +x "$HOME/.hermes/scripts/file_watcher.sh"
 echo "    ✓ Done"
 
-# Step 3: Install Python dependencies
-echo "🐍 Step 3/7: Installing Python dependencies..."
+# Step 4: Install Python dependencies
+echo "🐍 Step 4/7: Installing Python dependencies..."
 if [ -f "$REPO_DIR/requirements.txt" ]; then
     pip3 install --break-system-packages -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
         pip3 install -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
@@ -38,8 +46,8 @@ if [ -f "$REPO_DIR/requirements.txt" ]; then
 fi
 echo "    ✓ Done"
 
-# Step 4: Install launchd services
-echo "⏰ Step 4/7: Installing launchd services..."
+# Step 5: Install launchd services
+echo "⏰ Step 5/7: Installing launchd services..."
 for plist in "$REPO_DIR/launchd/"*.plist; do
     name="$(basename "$plist")"
     # Replace $HOME in plist with actual home path
@@ -49,15 +57,8 @@ for plist in "$REPO_DIR/launchd/"*.plist; do
     echo "    ✓ $name"
 done
 
-# Step 5: Set up daily digest cron
-echo "📅 Step 5/7: Setting up daily digest (6 AM)..."
-mkdir -p "$HOME/.hermes/scripts"
-mkdir -p "$HOME/.hermes/data/feeds"
-echo '{}' > "$HOME/.hermes/data/feeds/seen.json" 2>/dev/null || true
-echo "    ✓ Daily digest script installed at ~/.hermes/scripts/daily_digest.py"
-
 # Step 6: Set up file watcher
-echo "👀 Step 6/7: Setting up file watcher..."
+echo "👀 Step 5/6: Setting up file watcher..."
 if command -v fswatch &>/dev/null; then
     echo "    ✓ fswatch already installed"
 else
@@ -67,7 +68,7 @@ fi
 echo "    ✓ File watcher installed at ~/.hermes/scripts/file_watcher.sh"
 
 # Step 7: Check prerequisites
-echo "🔍 Step 7/7: Checking prerequisites..."
+echo "🔍 Step 6/6: Checking prerequisites..."
 
 MISSING=0
 
