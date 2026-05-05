@@ -132,11 +132,11 @@ Karpathy recommended periodic wiki health checks. This build automates them. Orp
 
 The feeds are not generic AI news. Topics are curated to your specific interests and projects:
 
-| Feed | Curated Topics | Why |
-|------|---------------|-----|
-| Daily digest | AI repos, HN stories, model pricing | Matches your stack: AI agents, automation, content pipelines |
-| Weekly scans | 8 hand-picked topics | Your domains: affiliate deals, trading, content creation, Python automation, marketing analytics, building in public, multi-income streams |
-| Project sync | Your active project docs | CLAUDE.md and README.md from your own repos |
+| Feed | Curated Topics |
+|------|---------------|
+| Daily digest | AI repos, HN stories, model pricing |
+| Weekly scans | 8 topics: AI agents, video trends, marketing, Python, trading, analytics, building in public, multi-income |
+| Project sync | Your active project docs (CLAUDE.md and README.md) |
 
 Every URL is checked against a dedup database. Zero repeats. The feeds evolve with your interests — update the topic list and the next scan reflects it.
 
