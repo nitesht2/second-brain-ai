@@ -135,7 +135,7 @@ The feeds are not generic AI news. Topics are curated to your specific interests
 | Feed | Curated Topics |
 |------|---------------|
 | Daily digest | AI repos, HN stories, model pricing |
-| Weekly scans | 8 topics: AI agents, video trends, marketing, Python, trading, analytics, building in public, multi-income |
+| Weekly scans | 8 topics you choose (example: AI agents, video, marketing, Python, automation, analytics) |
 | Project sync | Your active project docs (CLAUDE.md and README.md) |
 
 Every URL is checked against a dedup database. Zero repeats. The feeds evolve with your interests — update the topic list and the next scan reflects it.
@@ -196,7 +196,7 @@ The wiki is a standard **Obsidian vault**. Every page uses Obsidian-flavored mar
 - 🕸️ **Graph view** — watch connections form between concepts, entities, and sources as the wiki grows
 - 🔗 **Wikilinks** — click any `[[link]]` to jump to a connected page. The LLM maintains all cross-references
 - 📋 **Backlinks** — see every page that references the current one. Discover connections you did not know existed
-- 🔍 **Search** — full-text search across 270+ interlinked pages
+- 🔍 **Search** — full-text search across hundreds of interlinked pages
 
 **What you do:** curate sources, drop files into `raw/`, ask questions, browse discoveries.
 
