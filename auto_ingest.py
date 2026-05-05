@@ -4,11 +4,11 @@ Second Brain Auto-Ingest
 
 Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
 using OpenRouter (free Gemma 3 27B), Ollama (free, local Gemma 3 4B),
-or Kimi K2 API (paid, better quality).
+or DeepSeek Flash (paid, better quality).
 
 Provider selection (default: openrouter):
     export SECOND_BRAIN_PROVIDER=openrouter  # use OpenRouter (Gemma 3 27B free), fallback to Ollama
-    export SECOND_BRAIN_PROVIDER=kimi        # use Kimi K2, auto-fallback to Ollama
+    export SECOND_BRAIN_PROVIDER=openrouter  # use OpenRouter (default), auto-fallback to Ollama
     export SECOND_BRAIN_PROVIDER=ollama      # local Gemma 3 4B only
 
 Supported input formats:
@@ -98,60 +98,10 @@ MAX_TOKENS       = 3000
 # Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
 # free Ollama/Gemma 3 for the rest of the calendar month so clips still
 # get processed — you just stop paying. Resets on the 1st of each month.
-COST_CAP_MONTHLY_USD = float(os.environ.get("COST_CAP_MONTHLY_USD", "5.00"))
 
 # Running tallies for the current ingest session
 _SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
 
-
-class CostCapExceeded(Exception):
-    """Raised when Kimi session cost crosses COST_CAP_USD. Halts the run."""
-
-
-def _session_cost() -> float:
-    """Return USD cost of Kimi API calls so far this session."""
-    return (
-        _SESSION_TOKENS["input"]  / 1_000_000 * KIMI_INPUT_PRICE_PER_M +
-        _SESSION_TOKENS["output"] / 1_000_000 * KIMI_OUTPUT_PRICE_PER_M
-    )
-
-
-def _monthly_spend() -> float:
-    """Parse outputs/cost-log.md and sum costs from the current calendar month.
-
-    The log format is: | YYYY-MM-DD HH:MM | calls | in | out | $0.0042 |
-    We extract the date prefix and dollar amount from each row.
-    """
-    log = VAULT / "outputs" / "cost-log.md"
-    if not log.exists():
-        return 0.0
-    month_prefix = datetime.now().strftime("%Y-%m")
-    total = 0.0
-    for line in log.read_text(encoding="utf-8").splitlines():
-        if not line.startswith(f"| {month_prefix}"):
-            continue
-        m = re.search(r'\$([\d.]+)\s*\|', line)
-        if m:
-            try:
-                total += float(m.group(1))
-            except ValueError:
-                continue
-    return total
-
-
-def _notify_macos(title: str, message: str):
-    """Fire a native macOS notification (no deps, uses osascript)."""
-    try:
-        import subprocess
-        subprocess.run(
-            ["osascript", "-e",
-             f'display notification "{message}" with title "{title}" sound name "Basso"'],
-            timeout=5, capture_output=True,
-        )
-    except Exception:
-        pass  # notifications are best-effort
-
-DRY_RUN     = "--dry-run" in sys.argv
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -654,29 +604,7 @@ def write_wiki_entry(rel_path: str, content: str) -> bool:
         return True        # new file
 
 
-def append_cost_log():
-    """Write token usage and $ cost to outputs/cost-log.md for this session.
 
-    Only runs when provider=kimi (Ollama is free). Appends one row per run.
-    """
-    if PROVIDER != "kimi" or DRY_RUN or _SESSION_TOKENS["calls"] == 0:
-        return
-    in_tok  = _SESSION_TOKENS["input"]
-    out_tok = _SESSION_TOKENS["output"]
-    cost = (in_tok / 1_000_000 * KIMI_INPUT_PRICE_PER_M) + \
-           (out_tok / 1_000_000 * KIMI_OUTPUT_PRICE_PER_M)
-    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    log = VAULT / "outputs" / "cost-log.md"
-    log.parent.mkdir(parents=True, exist_ok=True)
-    if not log.exists():
-        log.write_text(
-            "# Kimi K2 Cost Log\n\n"
-            "| Date | Calls | Input tokens | Output tokens | Cost (USD) |\n"
-            "|---|---|---|---|---|\n"
-        )
-    with open(log, "a") as fh:
-        fh.write(f"| {stamp} | {_SESSION_TOKENS['calls']} | {in_tok:,} | {out_tok:,} | ${cost:.4f} |\n")
-    print(f"  💰 Kimi cost this run: ${cost:.4f} ({in_tok:,} in + {out_tok:,} out across {_SESSION_TOKENS['calls']} calls)")
 
 
 def append_log(entries: list):
@@ -849,7 +777,7 @@ Output ONLY the ===FILE:...===END=== block. Use real [[wikilinks]] from the entr
 
 def run_synthesis():
     """Two-phase synthesis: cluster all wiki entries, then synthesize each cluster."""
-    provider_label = f"Kimi K2 → Gemma 3 fallback" if PROVIDER == "kimi" else f"Ollama ({MODEL})"
+    provider_label = f"OpenRouter ({OPENROUTER_MODEL}) → Gemma 3 fallback" if PROVIDER == "openrouter" else f"Ollama ({MODEL})"
     print(f"{'[DRY RUN] ' if DRY_RUN else ''}Starting wiki synthesis...")
     print(f"Provider: {provider_label}\n")
 
@@ -863,10 +791,7 @@ def run_synthesis():
 
     try:
         cluster_response = call_llm(build_cluster_prompt(digests))
-    except CostCapExceeded as e:
         print(f"\n  🛑 COST CAP HIT: {e}")
-        _notify_macos("Second Brain: cost cap hit",
-                      f"Synthesis halted at ${_session_cost():.2f}.")
         return
     except RuntimeError as e:
         print(f"  ERROR: {e}")
@@ -927,10 +852,7 @@ def run_synthesis():
             synthesis_response = call_llm(
                 build_synthesis_prompt(cluster_name, entries_text, all_stems)
             )
-        except CostCapExceeded as e:
             print(f"\n    🛑 COST CAP HIT: {e}")
-            _notify_macos("Second Brain: cost cap hit",
-                          f"Synthesis stopped mid-run at ${_session_cost():.2f}.")
             return
         except RuntimeError as e:
             print(f"    ERROR: {e}")
@@ -1009,36 +931,10 @@ def update_wiki_index():
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def _check_monthly_cap():
-    """If this month's Kimi spend already exceeds COST_CAP_MONTHLY_USD,
-    auto-downgrade the provider to Ollama for this run and notify the user.
-
-    Mutates the module-level PROVIDER so all subsequent call_llm() calls
-    route to free Ollama instead of paid Kimi. Clips still get processed —
-    you just stop paying until the next month rolls over.
-    """
-    global PROVIDER
-    if PROVIDER != "kimi":
-        return
-    spent = _monthly_spend()
-    if spent >= COST_CAP_MONTHLY_USD:
-        month = datetime.now().strftime("%B")
-        print(f"\n  💰 Monthly cap reached: ${spent:.2f} spent on Kimi in {month} "
-              f"(cap: ${COST_CAP_MONTHLY_USD:.2f})")
-        print(f"     Auto-downgrading to free Ollama/Gemma 3 for the rest of {month}.")
-        _notify_macos(
-            f"Second Brain: {month} budget used",
-            f"${spent:.2f} spent. Switched to free Ollama until {month[:3]} 1st.",
-        )
-        PROVIDER = "ollama"
-    elif spent > 0:
-        print(f"  💰 Kimi spend this month: ${spent:.2f} / ${COST_CAP_MONTHLY_USD:.2f}")
-
 
 def main():
     # Synthesis mode — bypass ingest entirely
     if "--synthesize" in sys.argv:
-        _check_monthly_cap()
         run_synthesis()
         return
 
@@ -1070,8 +966,7 @@ def main():
     if not should_run_today():
         return
 
-    # Budget gate: if month's Kimi spend is over the cap, switch to free Ollama
-    _check_monthly_cap()
+    
 
     raw_files = get_raw_files()
     if not raw_files:
@@ -1081,7 +976,7 @@ def main():
         return
 
     existing = get_existing_wiki_stems()
-    provider_label = f"Kimi K2 → Gemma 3 fallback" if PROVIDER == "kimi" else f"Ollama ({MODEL})"
+    provider_label = f"OpenRouter ({OPENROUTER_MODEL}) → Gemma 3 fallback" if PROVIDER == "openrouter" else f"Ollama ({MODEL})"
     print(f"{'[DRY RUN] ' if DRY_RUN else ''}Found {len(raw_files)} raw file(s), {len(existing)} existing wiki entries")
     print(f"Provider: {provider_label}\n")
 
@@ -1101,15 +996,6 @@ def main():
 
         try:
             response = call_llm(build_prompt(content, raw_file.name, existing))
-        except CostCapExceeded as e:
-            print(f"\n  🛑 COST CAP HIT: {e}")
-            print(f"  Halting run. Unprocessed files remain in raw/ for next session.")
-            _notify_macos(
-                "Second Brain: cost cap hit",
-                f"Kimi cost ${_session_cost():.2f} > ${COST_CAP_USD:.2f}. Run stopped.",
-            )
-            append_cost_log()
-            return
         except RuntimeError as e:
             print(f"  ERROR: {e}")
             print("  Skipping — make sure Ollama is running (ollama serve)")
@@ -1155,8 +1041,8 @@ def main():
     print("\n─── Updating wiki/index.md ───")
     update_wiki_index()
 
-    # Log token usage + $ cost (Kimi only; Ollama is free)
-    append_cost_log()
+    record_run()
+
 
 
 if __name__ == "__main__":

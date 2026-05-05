@@ -128,6 +128,22 @@ A Python script calls the GitHub API, Hacker News API, and OpenRouter API at 6 A
 
 Karpathy recommended periodic wiki health checks. This build automates them. Orphan detection, contradiction flagging, missing concept suggestions, index validation.
 
+### Personalized Curation
+
+The feeds are not generic AI news. Topics are curated to your specific interests and projects:
+
+| Feed | Curated Topics | Why |
+|------|---------------|-----|
+| Daily digest | AI repos, HN stories, model pricing | Matches your stack: AI agents, automation, content pipelines |
+| Weekly scans | 8 hand-picked topics | Your domains: affiliate deals, trading, content creation, Python automation, marketing analytics, building in public, multi-income streams |
+| Project sync | Your active project docs | CLAUDE.md and README.md from your own repos |
+
+Every URL is checked against a dedup database. Zero repeats. The feeds evolve with your interests — update the topic list and the next scan reflects it.
+
+### Runs on Autopilot
+
+Four macOS launchd services survive reboot. The file watcher catches new content in real time. The cron heartbeat fires every 6 hours as a reliability fallback. Kanban dispatch via Hermes Agent routes every task to the right agent profile. Observability on every board — status, timestamps, output, assignee. No digging through logs.
+
 ---
 
 ## 💰 Cost
@@ -168,6 +184,25 @@ Cheaper than one ChatGPT Plus month. Runs every day. You read. Agents write.
 ├── auto_ingest.py        ← Ingestion engine
 └── brain_server.py       ← Save server (bookmarklet)
 ```
+
+---
+
+## 🔮 Obsidian — The Reading Layer
+
+The wiki is a standard **Obsidian vault**. Every page uses Obsidian-flavored markdown with `[[wikilinks]]`. Karpathy described it best: *"Obsidian is the IDE. The LLM is the programmer. The wiki is the codebase."*
+
+**The agents write everything.** You read it in Obsidian:
+
+- 🕸️ **Graph view** — watch connections form between concepts, entities, and sources as the wiki grows
+- 🔗 **Wikilinks** — click any `[[link]]` to jump to a connected page. The LLM maintains all cross-references
+- 📋 **Backlinks** — see every page that references the current one. Discover connections you did not know existed
+- 🔍 **Search** — full-text search across 270+ interlinked pages
+
+**What you do:** curate sources, drop files into `raw/`, ask questions, browse discoveries.
+
+**What the agents do:** read files, extract entities, write pages, update cross-references, maintain the index, run lint checks, flag contradictions. Everything that makes a knowledge base actually useful over time.
+
+The [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) repo provides MCP-based tools that let Hermes Agent interact with the vault programmatically — reading pages, searching for concepts, checking backlinks. The agents use these during every ingest and lint operation.
 
 ---
 

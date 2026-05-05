@@ -12,6 +12,6 @@ You edit these. Agents never rewrite them.
 
 ## Why this matters
 Without brand foundation, wiki entries come out in generic AI voice.
-With it, your wiki sounds like you wrote it, even when Kimi/Ollama wrote it.
+With it, your wiki sounds like you wrote it, even when an LLM wrote it.
 
 See `~/SecondBrain/brand/` on a working system for examples.
