@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.nitesh.secondbrain-server</string>
+    <string>com.secondbrain.server</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>/Users/nitesh/SecondBrain/brain_server.py</string>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>$HOME/SecondBrain/brain_server.py</string>
     </array>
 
     <key>RunAtLoad</key>
     <true/>
-
     <key>KeepAlive</key>
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/nitesh/SecondBrain/outputs/brain-server.log</string>
+    <string>$HOME/SecondBrain/outputs/server.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nitesh/SecondBrain/outputs/brain-server.log</string>
+    <string>$HOME/SecondBrain/outputs/server.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>

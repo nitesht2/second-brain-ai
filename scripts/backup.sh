@@ -1,27 +1,22 @@
 #!/bin/bash
-# Second Brain — nightly local + GitHub backup
-# Local: ~/Backups/SecondBrain/ (3-day rolling window)
-# Remote: set SECOND_BRAIN_REPO or your git remote (private git history)
-
+# Second Brain Backup
+# Copies vault to timestamped directory, excluding raw/processed and outputs/
 set -e
+
 VAULT="$HOME/SecondBrain"
-BACKUP_DIR="$HOME/Backups/SecondBrain"
-STAMP=$(date +%Y-%m-%d)
+BACKUP_DIR="$HOME/SecondBrain-Backups"
 
-# --- 1. Local tarball snapshot ---
+TIMESTAMP=$(date +%Y-%m-%d_%H%M)
+DEST="$BACKUP_DIR/vault-$TIMESTAMP"
+
 mkdir -p "$BACKUP_DIR"
-# Back up wiki + brand + outputs (content only, not raw/ which is ephemeral)
-tar -czf "$BACKUP_DIR/vault-$STAMP.tar.gz" -C "$VAULT" wiki brand outputs 2>/dev/null
 
-# --- 2. Prune: keep only last 3 days of local snapshots ---
-ls -1t "$BACKUP_DIR"/vault-*.tar.gz 2>/dev/null | tail -n +4 | xargs -I {} rm -f {}
+# Rsync vault, excluding large generated files
+rsync -a --exclude 'raw/processed/' --exclude 'outputs/' --exclude '.obsidian/' \
+    "$VAULT/" "$DEST/"
 
-# --- 3. GitHub sync (private repo) ---
-cd "$VAULT"
-git add wiki brand outputs/cost-log.md .gitignore 2>/dev/null || true
-if ! git diff --cached --quiet; then
-    git commit -m "Auto-backup: $STAMP" --quiet
-    git push --quiet 2>/dev/null || echo "[$(date)] GitHub push failed — local backup still succeeded" >> "$BACKUP_DIR/backup.log"
-fi
+echo "✅ Backed up to $DEST"
 
-echo "[$(date)] Backup complete: $BACKUP_DIR/vault-$STAMP.tar.gz" >> "$BACKUP_DIR/backup.log"
+# Keep only last 30 backups
+ls -dt "$BACKUP_DIR"/vault-* 2>/dev/null | tail -n +31 | xargs rm -rf 2>/dev/null || true
+echo "📦 $(ls "$BACKUP_DIR" | wc -l) backups retained"

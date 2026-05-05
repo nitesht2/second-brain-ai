@@ -1,13 +1,13 @@
 #!/bin/bash
-# Second Brain AI - Quick Setup Script
-# Creates vault, copies templates, installs slash commands, sets up launchd scheduler + save server
-
+# Second Brain AI — Quick Setup
+# Creates vault, installs launchd services, file watcher, daily digest.
+# One command: git clone && ./setup.sh
 set -e
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAULT="$HOME/SecondBrain"
-CLAUDE_COMMANDS="$HOME/.claude/commands"
 LAUNCHD_DIR="$HOME/Library/LaunchAgents"
+HERMES_BIN="$HOME/.local/bin/hermes"
 
 echo ""
 echo "🧠 Second Brain AI — Quick Setup"
@@ -15,56 +15,87 @@ echo "================================="
 echo ""
 
 # Step 1: Create vault structure
-echo "📁 Step 1/5: Creating vault at $VAULT..."
-mkdir -p "$VAULT"/{raw/processed,wiki/{entities,concepts,sources,synthesis},outputs}
+echo "📁 Step 1/7: Creating vault at $VAULT..."
+mkdir -p "$VAULT"/{raw/processed,raw/generated,wiki/{entities,concepts,sources,synthesis},wiki/episodic,wiki/projects,outputs}
 echo "    ✓ Done"
 
-# Step 2: Copy vault template files
-echo "📋 Step 2/6: Copying vault template files..."
+# Step 2: Copy vault template
+echo "📋 Step 2/7: Copying vault template files..."
 cp -n "$REPO_DIR/vault-template/CLAUDE.md" "$VAULT/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/index.md" "$VAULT/wiki/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/log.md" "$VAULT/wiki/" 2>/dev/null || true
 cp "$REPO_DIR/auto_ingest.py" "$VAULT/"
-cp "$REPO_DIR/brain_server.py" "$VAULT/"
+cp "$REPO_DIR/scripts/daily_digest.py" "$HOME/.hermes/scripts/"
+cp "$REPO_DIR/scripts/file_watcher.sh" "$HOME/.hermes/scripts/"
 echo "    ✓ Done"
 
-# Step 3: Install Claude Code slash commands
-echo "🤖 Step 3/6: Installing slash commands to $CLAUDE_COMMANDS..."
-mkdir -p "$CLAUDE_COMMANDS"
-cp "$REPO_DIR/claude-commands/"*.md "$CLAUDE_COMMANDS/"
-echo "    ✓ /second-brain, /second-brain-ingest, /second-brain-query, /second-brain-lint, /second-brain-synthesis"
-
-# Step 4: Install launchd scheduler
-echo "⏰ Step 4/6: Installing launchd scheduler (every 2 days at 4:07am)..."
-cp "$REPO_DIR/launchd/com.nitesh.secondbrain-ingest.plist" "$LAUNCHD_DIR/"
-launchctl unload "$LAUNCHD_DIR/com.nitesh.secondbrain-ingest.plist" 2>/dev/null || true
-launchctl load "$LAUNCHD_DIR/com.nitesh.secondbrain-ingest.plist"
-echo "    ✓ Scheduler active"
-
-# Step 5: Install save server (1-click bookmarklet backend)
-echo "🔗 Step 5/6: Installing save server (port 7331)..."
-cp "$REPO_DIR/launchd/com.nitesh.secondbrain-server.plist" "$LAUNCHD_DIR/"
-launchctl unload "$LAUNCHD_DIR/com.nitesh.secondbrain-server.plist" 2>/dev/null || true
-launchctl load "$LAUNCHD_DIR/com.nitesh.secondbrain-server.plist"
-echo "    ✓ Save server running at http://localhost:7331"
-
-# Step 6: Check prerequisites
-echo "🔍 Step 6/6: Checking prerequisites..."
-if command -v ollama &>/dev/null; then
-    echo "    ✓ Ollama installed"
-    if ollama list 2>/dev/null | grep -q "gemma3:4b\|qwen3.5"; then
-        echo "    ✓ AI model available"
-    else
-        echo "    ⚠ No model found. Run: ollama pull gemma3:4b"
-    fi
-else
-    echo "    ⚠ Ollama not found. Install from https://ollama.com"
+# Step 3: Install Python dependencies
+echo "🐍 Step 3/7: Installing Python dependencies..."
+if [ -f "$REPO_DIR/requirements.txt" ]; then
+    pip3 install --break-system-packages -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
+        pip3 install -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
+        echo "    ⚠ pip install failed — install manually: pip3 install -r requirements.txt"
 fi
+echo "    ✓ Done"
 
-if [ -d "/Applications/Obsidian.app" ]; then
+# Step 4: Install launchd services
+echo "⏰ Step 4/7: Installing launchd services..."
+for plist in "$REPO_DIR/launchd/"*.plist; do
+    name="$(basename "$plist")"
+    # Replace $HOME in plist with actual home path
+    sed "s|\$HOME|$HOME|g" "$plist" > "$LAUNCHD_DIR/$name"
+    launchctl unload "$LAUNCHD_DIR/$name" 2>/dev/null || true
+    launchctl load "$LAUNCHD_DIR/$name"
+    echo "    ✓ $name"
+done
+
+# Step 5: Set up daily digest cron
+echo "📅 Step 5/7: Setting up daily digest (6 AM)..."
+mkdir -p "$HOME/.hermes/scripts"
+mkdir -p "$HOME/.hermes/data/feeds"
+echo '{}' > "$HOME/.hermes/data/feeds/seen.json" 2>/dev/null || true
+echo "    ✓ Daily digest script installed at ~/.hermes/scripts/daily_digest.py"
+
+# Step 6: Set up file watcher
+echo "👀 Step 6/7: Setting up file watcher..."
+if command -v fswatch &>/dev/null; then
+    echo "    ✓ fswatch already installed"
+else
+    echo "    Installing fswatch via Homebrew..."
+    brew install fswatch 2>/dev/null || echo "    ⚠ Install manually: brew install fswatch"
+fi
+echo "    ✓ File watcher installed at ~/.hermes/scripts/file_watcher.sh"
+
+# Step 7: Check prerequisites
+echo "🔍 Step 7/7: Checking prerequisites..."
+
+MISSING=0
+
+if [ -f "/Applications/Obsidian.app/Contents/MacOS/Obsidian" ]; then
     echo "    ✓ Obsidian installed"
 else
     echo "    ⚠ Obsidian not found. Install from https://obsidian.md"
+    MISSING=1
+fi
+
+if command -v python3 &>/dev/null; then
+    echo "    ✓ Python 3 installed"
+else
+    echo "    ⚠ Python 3 not found"
+    MISSING=1
+fi
+
+if [ -f "$HERMES_BIN" ]; then
+    echo "    ✓ Hermes Agent installed"
+else
+    echo "    ⚠ Hermes Agent not found at $HERMES_BIN"
+    echo "      Install: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+fi
+
+if command -v fswatch &>/dev/null; then
+    echo "    ✓ fswatch installed"
+else
+    echo "    ⚠ fswatch not found. Install: brew install fswatch"
 fi
 
 echo ""
@@ -72,16 +103,15 @@ echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Open Obsidian → Open folder as vault → select $VAULT"
-echo "  2. Install Web Clipper (https://obsidian.md/clipper) → set location to 'raw'"
-echo "  3. Add the YouTube bookmarklet to your browser:"
+echo "  2. Install Obsidian Web Clipper → set vault location to '$VAULT'"
+echo "  3. Drop a file into $VAULT/raw/ — the file watcher picks it up"
+echo "  4. Browse $VAULT/wiki/ in Obsidian to see your knowledge graph"
 echo ""
-echo "     Drag this link to your bookmarks bar, or create a new bookmark with this URL:"
+echo "Services running:"
+echo "  • SecondBrain ingest    — daily at 4:07 AM (launchd)"
+echo "  • File watcher          — real-time (launchd)"
+echo "  • Daily digest          — 6 AM (cron via launchd)"
 echo ""
-echo "     javascript:(function(){fetch('http://localhost:7331/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:location.href,title:document.title})}).then(r=>r.json()).then(d=>alert('✅ Saved to Second Brain: '+d.file)).catch(()=>alert('❌ Save server not running'));})();"
-echo ""
-echo "  4. In Claude Code, run: /second-brain"
-echo ""
-echo "Test save server:"
-echo "  curl -s http://localhost:7331/save -X POST -H 'Content-Type: application/json' \\"
-echo "    -d '{\"url\":\"https://youtube.com/watch?v=test\",\"title\":\"Test\"}'"
+echo "Docs: $VAULT/CLAUDE.md"
+echo "Repo: https://github.com/nitesht2/second-brain-ai"
 echo ""

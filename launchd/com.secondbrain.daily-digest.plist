@@ -4,19 +4,18 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.nitesh.secondbrain-backup</string>
+    <string>com.secondbrain.ingest</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/bin/bash</string>
-        <string>/Users/nitesh/SecondBrain/scripts/backup.sh</string>
+        <string>$HOME/.hermes/venv/bin/python3</string>
+        <string>$HOME/.hermes/scripts/daily_digest.py</string>
     </array>
 
-    <!-- Fire nightly at 3:00am, 1 hour before ingest. -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>3</integer>
+        <integer>6</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>
@@ -25,17 +24,15 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/nitesh/Backups/SecondBrain/backup-daemon.log</string>
+    <string>$HOME/SecondBrain/outputs/digest.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nitesh/Backups/SecondBrain/backup-daemon.log</string>
+    <string>$HOME/SecondBrain/outputs/digest.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>/Users/nitesh</string>
     </dict>
 </dict>
 </plist>

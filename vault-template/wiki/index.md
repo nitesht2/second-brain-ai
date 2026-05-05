@@ -1,6 +1,6 @@
 # Wiki Index
 
-Auto-maintained by `/second-brain-ingest`. Last updated: {{date}}
+Auto-maintained by the ingestion agent. Last updated: {{date}}
 
 ## Entities
 <!-- people, companies, tools -->
@@ -9,7 +9,7 @@ Auto-maintained by `/second-brain-ingest`. Last updated: {{date}}
 <!-- ideas, frameworks, strategies -->
 
 ## Sources
-<!-- one entry per raw clip -->
+<!-- one entry per ingested file -->
 
 ## Synthesis
 <!-- cross-topic connections and insights -->

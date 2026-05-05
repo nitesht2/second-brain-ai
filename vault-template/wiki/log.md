@@ -1,9 +1,9 @@
-# Ingest Log
+# Wiki Log
 
-Track of all ingest runs and what was added.
+Append-only chronological log of all wiki operations.
 
-<!-- Format:
-### YYYY-MM-DD
-- Added [[Entry Name]] (source: filename.md)
-- Updated [[Existing Entry]] with new connections
--->
+Format: `## [YYYY-MM-DD] operation | Title`
+
+---
+
+<!-- Entries auto-appended by ingestion agent -->
