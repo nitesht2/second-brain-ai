@@ -90,7 +90,7 @@ Not everything comes from automated feeds. For articles, threads, and videos you
        ▼                        ▼                        ▼
 ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
 │ DISTILL      │       │ INGEST       │       │ SCAN         │
-│ episodic/    │       │ raw/         │       │ CLAUDE.md    │
+│ episodic/    │       │ raw/         │       │ AGENTS.md    │
 │ session logs │       │ markdown     │       │ README.md    │
 │ → concepts   │       │ PDF, text    │       │ → wiki       │
 └──────┬───────┘       └──────┬───────┘       └──────┬───────┘
@@ -108,7 +108,7 @@ Not everything comes from automated feeds. For articles, threads, and videos you
                     └───────────────────────────┘
 ```
 
-Three layers, exactly as Karpathy described: Raw Sources → LLM-Maintained Wiki → Schema (CLAUDE.md). Extended with full automation.
+Three layers, exactly as Karpathy described: Raw Sources → LLM-Maintained Wiki → Schema (AGENTS.md). Extended with full automation.
 
 ---
 
@@ -124,7 +124,7 @@ Drop files into `raw/`. The file watcher (fswatch) detects them instantly and tr
 
 ### Phase 3: Project Sync
 
-Every 6 hours, the agent scans `CLAUDE.md` and `README.md` from your active projects. Changed files get extracted into `wiki/projects/`. Architecture docs stay synced automatically.
+Every 6 hours, the agent scans `AGENTS.md` and `README.md` from your active projects. Changed files get extracted into `wiki/projects/`. Architecture docs stay synced automatically.
 
 ### Daily Feed
 
@@ -142,7 +142,7 @@ The feeds are not generic AI news. Topics are curated to your specific interests
 |------|---------------|
 | Daily digest | AI repos, HN stories, model pricing |
 | Weekly scans | 8 topics you choose (example: AI agents, video, marketing, Python, automation, analytics) |
-| Project sync | Your active project docs (CLAUDE.md and README.md) |
+| Project sync | Your active project docs (AGENTS.md and README.md) |
 
 Every URL is checked against a dedup database. Zero repeats. The feeds evolve with your interests — update the topic list and the next scan reflects it.
 
@@ -173,7 +173,7 @@ Cheaper than one ChatGPT Plus month. Runs every day. You read. Agents write.
 
 ```
 ~/SecondBrain/
-├── CLAUDE.md             ← Agent instructions (schema)
+├── AGENTS.md             ← Agent instructions (schema)
 ├── raw/                  ← Drop files here for ingestion
 │   ├── processed/        ← Ingested files (don't touch)
 │   └── generated/        ← Auto-generated digests
@@ -185,7 +185,7 @@ Cheaper than one ChatGPT Plus month. Runs every day. You read. Agents write.
 │   ├── sources/          ← One summary per ingested file
 │   ├── synthesis/        ← Cross-topic patterns
 │   ├── episodic/         ← Agent session records
-│   └── projects/         ← Auto-synced from CLAUDE.md
+│   └── projects/         ← Auto-synced from AGENTS.md
 ├── outputs/              ← Logs, lint reports
 ├── auto_ingest.py        ← Ingestion engine
 └── brain_server.py       ← Save server (bookmarklet)
@@ -223,7 +223,7 @@ The [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) repo pro
 | `scripts/file_watcher.sh` | Watches raw/ for new files, triggers kanban |
 | `scripts/backup.sh` | Backs up vault to timestamped directory |
 | `launchd/` | macOS services: ingest, watcher, daily digest, server |
-| `vault-template/` | Empty vault structure + CLAUDE.md schema |
+| `vault-template/` | Empty vault structure + AGENTS.md schema |
 
 ---
 

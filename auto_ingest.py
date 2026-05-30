@@ -12,16 +12,16 @@ Provider selection (default: openrouter):
     export SECOND_BRAIN_PROVIDER=ollama      # local Gemma 3 4B only
 
 Supported input formats:
-  .md    → markdown clips (Web Clipper output) — best for social media (TikTok, Instagram, Twitter)
+  .md    → markdown clips (Web Clipper output) - best for social media (TikTok, Instagram, Twitter)
   .pdf   → PDF documents (text extracted via pypdf)
   .txt   → plain text, OR a YouTube URL on the first line
            (transcript fetched via youtube-transcript-api)
 
 Open-source dependencies used by this script:
-  - Ollama              (local LLM runtime)    — https://github.com/ollama/ollama
-  - poppler (pdftotext) (PDF text extraction)  — https://poppler.freedesktop.org
-  - pypdf               (PDF fallback)         — https://github.com/py-pdf/pypdf
-  - youtube-transcript-api (YouTube transcripts) — https://github.com/jdepoix/youtube-transcript-api
+  - Ollama              (local LLM runtime)    - https://github.com/ollama/ollama
+  - poppler (pdftotext) (PDF text extraction)  - https://poppler.freedesktop.org
+  - pypdf               (PDF fallback)         - https://github.com/py-pdf/pypdf
+  - youtube-transcript-api (YouTube transcripts) - https://github.com/jdepoix/youtube-transcript-api
 
 Usage:
     python3 auto_ingest.py                               # normal ingest run
@@ -53,12 +53,11 @@ PROCESSED   = RAW_DIR / "processed"
 WIKI_DIR    = VAULT / "wiki"
 LOG_FILE    = VAULT / "outputs" / "ingest-log.md"
 
-# Brand Foundation lives in ~/.claude/voice/ (Claude Code's config directory —
-# permanent location that survives vault moves/deletions). Override via
-# NITESH_VOICE_PATH env var if you keep voice files elsewhere.
+# Brand Foundation lives in ~/.voice/ (Nitesh's brand voice directory).
+# Override via NITESH_VOICE_PATH env var if you keep voice files elsewhere.
 BRAND_DIR   = Path(os.environ.get(
     "NITESH_VOICE_PATH",
-    str(Path.home() / ".claude" / "voice"),
+    str(Path.home() / ".voice"),
 ))
 
 OLLAMA_URL      = "http://127.0.0.1:11434/api/generate"
@@ -97,7 +96,7 @@ TEMPERATURE         = 0.2                 # low = more consistent structure
 MAX_TOKENS       = 3000
 # Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
 # free Ollama/Gemma 3 for the rest of the calendar month so clips still
-# get processed — you just stop paying. Resets on the 1st of each month.
+# get processed - you just stop paying. Resets on the 1st of each month.
 
 # Running tallies for the current ingest session
 _SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
@@ -151,15 +150,15 @@ def extract_pdf_text(pdf_path) -> str:
     """Extract all text from a PDF.
 
     Tries in order:
-      1. pdftotext (poppler)  — industry standard, most accurate, fastest
-         https://poppler.freedesktop.org  — install: `brew install poppler`
-      2. pypdf (pure Python)  — fallback, no external dependency
-         https://github.com/py-pdf/pypdf  — install: `pip3 install pypdf`
+      1. pdftotext (poppler)  - industry standard, most accurate, fastest
+         https://poppler.freedesktop.org  - install: `brew install poppler`
+      2. pypdf (pure Python)  - fallback, no external dependency
+         https://github.com/py-pdf/pypdf  - install: `pip3 install pypdf`
     """
     import shutil as _sh
     import subprocess
 
-    # Try 1: pdftotext (preferred — industry standard, poppler-based)
+    # Try 1: pdftotext (preferred - industry standard, poppler-based)
     if _sh.which("pdftotext"):
         try:
             result = subprocess.run(
@@ -169,9 +168,9 @@ def extract_pdf_text(pdf_path) -> str:
             if result.returncode == 0 and result.stdout.strip():
                 return f"# {pdf_path.stem}\n\n{result.stdout}"
             else:
-                print(f"  ⚠ pdftotext returned empty — falling back to pypdf")
+                print(f"  ⚠ pdftotext returned empty - falling back to pypdf")
         except Exception as e:
-            print(f"  ⚠ pdftotext failed: {e} — falling back to pypdf")
+            print(f"  ⚠ pdftotext failed: {e} - falling back to pypdf")
 
     # Try 2: pypdf (pure Python fallback)
     try:
@@ -244,7 +243,7 @@ def fetch_github_readme(url: str) -> str:
         github.com/owner/repo  (no scheme)
     """
     import re as _re
-    # Normalize URL — strip scheme, trailing slashes, tree/branch paths
+    # Normalize URL - strip scheme, trailing slashes, tree/branch paths
     clean = url.strip().rstrip("/")
     clean = _re.sub(r'^https?://', '', clean)
     parts = clean.split("/")  # ["github.com", "owner", "repo", ...]
@@ -271,7 +270,7 @@ def fetch_github_readme(url: str) -> str:
         except Exception:
             continue
 
-    print(f"  ⚠ Could not fetch README for {owner}/{repo} — storing URL only.")
+    print(f"  ⚠ Could not fetch README for {owner}/{repo} - storing URL only.")
     return f"# GitHub Repo: {owner}/{repo}\n\nSource: {url}\n\n(README not found)"
 
 
@@ -299,7 +298,7 @@ def extract_content(file_path) -> str:
     For .md files from Obsidian Web Clipper: detects YouTube URLs in YAML frontmatter
     (source: field) and automatically fetches the full transcript.
 
-    For TikTok, Instagram, and Twitter — use Obsidian Web Clipper instead.
+    For TikTok, Instagram, and Twitter - use Obsidian Web Clipper instead.
     These platforms block programmatic access. Web Clipper reads what's in
     your browser session and saves it as .md automatically.
     """
@@ -319,23 +318,23 @@ def extract_content(file_path) -> str:
             if source_match:
                 url = source_match.group(1).strip()
 
-                # YouTube — fetch transcript via API (no browser needed)
+                # YouTube - fetch transcript via API (no browser needed)
                 video_id = extract_video_id(url)
                 if video_id:
                     if is_already_ingested(video_id):
-                        print(f"  ⚠ Already in wiki (video ID {video_id}) — skipping duplicate.")
+                        print(f"  ⚠ Already in wiki (video ID {video_id}) - skipping duplicate.")
                         return ""
-                    print(f"  ▶ YouTube URL detected in frontmatter — fetching transcript...")
+                    print(f"  ▶ YouTube URL detected in frontmatter - fetching transcript...")
                     transcript = fetch_youtube_transcript(url)
                     if transcript:
                         body = raw[fm_match.end():].strip()
                         return f"{body}\n\n{transcript}" if body else transcript
 
-                # TikTok / Instagram — Web Clipper already captured description,
+                # TikTok / Instagram - Web Clipper already captured description,
                 # hashtags, and caption. Use that directly. For full transcript,
                 # run: python3 auto_ingest.py --save <URL>
                 elif any(d in url for d in ("tiktok.com", "instagram.com", "instagr.am")):
-                    print(f"  ▶ TikTok/Instagram clip detected — using Web Clipper content.")
+                    print(f"  ▶ TikTok/Instagram clip detected - using Web Clipper content.")
         # Fallback: return full file as-is (articles, notes, non-video clips)
         return raw
 
@@ -397,7 +396,7 @@ def call_openrouter(prompt: str) -> str:
     """Call OpenRouter API (OpenAI-compatible). Uses google/gemma-3-27b-it:free.
     Falls back to local Ollama if OpenRouter fails or API key is missing."""
     if not OPENROUTER_API_KEY:
-        print("  ⚠ OPENROUTER_API_KEY not set — falling back to Ollama")
+        print("  ⚠ OPENROUTER_API_KEY not set - falling back to Ollama")
         return call_ollama(prompt)
 
     payload = json.dumps({
@@ -436,7 +435,7 @@ def call_llm(prompt: str) -> str:
         try:
             return call_openrouter(prompt)
         except RuntimeError as e:
-            print(f"  ⚠ OpenRouter failed ({e}) — falling back to Ollama/Gemma 3")
+            print(f"  ⚠ OpenRouter failed ({e}) - falling back to Ollama/Gemma 3")
             return call_ollama(prompt)
     return call_ollama(prompt)
 
@@ -452,14 +451,14 @@ def load_brand_foundation() -> str:
         REFERENCE-ONLY and skipped. Store large source documents with `_` prefix
         and distill the key rules into a shorter sibling file.
 
-    Returns empty string if brand/ doesn't exist (graceful — BF is optional).
+    Returns empty string if brand/ doesn't exist (graceful - BF is optional).
     """
     if not BRAND_DIR.exists():
         return ""
     parts = []
     for p in sorted(BRAND_DIR.glob("*.md")):
         if p.name.startswith("_"):
-            continue  # reference docs — don't burn tokens on them
+            continue  # reference docs - don't burn tokens on them
         try:
             parts.append(f"### {p.stem.replace('-', ' ').title()}\n\n{p.read_text(encoding='utf-8').strip()}")
         except OSError:
@@ -478,7 +477,7 @@ def build_prompt(content: str, filename: str, existing: list) -> str:
 
     brand = load_brand_foundation()
     brand_section = f"""
-BRAND FOUNDATION (read before writing anything — this is how the human sounds):
+BRAND FOUNDATION (read before writing anything - this is how the human sounds):
 {brand}
 """ if brand else ""
 
@@ -503,9 +502,11 @@ OUTPUT INSTRUCTIONS:
 - Be concise and factual
 - Follow the BRAND FOUNDATION above: no em dashes, no banned phrases, match the voice rules.
 - Add a `confidence:` frontmatter field with value high/medium/low/uncertain based on source quality.
+- Add an `explored: false` frontmatter field to all concept and entity notes.
 - Include a `## Counter-arguments` section naming what the source might be missing or what a skeptic would say.
+- For concept and entity notes: include a `## Why It Matters` section connecting to specific projects, goals, or decisions. Skip if no specific connection exists.
 
-OUTPUT FORMAT — use this exact delimiter pattern, nothing else:
+OUTPUT FORMAT - use this exact delimiter pattern, nothing else:
 
 ===FILE: wiki/sources/Source Name Here.md===
 ---
@@ -549,6 +550,11 @@ Who or what this is.
 ## Key Points
 - key point
 
+## Why It Matters
+How this entity/tool connects to specific projects or goals.
+What changes if this entity succeeds or fails.
+(Skip this section if no specific connection exists, but explain why.)
+
 ## Counter-arguments
 - Known limitations or critiques of this entity/tool
 
@@ -561,6 +567,44 @@ Who or what this is.
 
 ## Tags
 #tag
+===END===
+
+===FILE: wiki/concepts/Concept Name.md===
+---
+confidence: high
+explored: false
+---
+# Concept Name
+
+**Date:** YYYY-MM-DD
+**Tags:** #topic
+**Related:** [[Link]] · [[Link]]
+
+---
+
+## The Idea
+One clear statement. Write it like you're explaining it to yourself in 12 months.
+
+## Why It Matters
+Why does this idea matter right now?
+What does it change about how you work or think?
+Connect to active projects or income goals.
+(Skip this section if no specific connection exists, but explain why.)
+
+## Counter-arguments
+- What might the source be missing?
+- What would a skeptic push back on?
+
+## Connections
+- [[Related Note]]
+- [[Related Note]]
+- What question does this open up?
+
+## Source
+{filename}
+
+## Tags
+#tag1 #tag2
 ===END===
 
 Now process the raw file above. Output ONLY the ===FILE:...===END=== blocks.
@@ -580,7 +624,7 @@ def parse_response(response: str) -> list:
 def write_wiki_entry(rel_path: str, content: str) -> bool:
     """
     Write a wiki entry. If file already exists, append new connections
-    rather than overwriting — same rule as /second-brain-ingest skill.
+    rather than overwriting - same rule as /second-brain-ingest skill.
     Returns True if a new file was created.
     """
     full_path = VAULT / rel_path
@@ -628,9 +672,9 @@ def collect_wiki_digests() -> list:
     """Read all wiki entries (entities, concepts, sources) and return digest dicts.
 
     Each digest contains:
-      stem    — filename without .md (used to match cluster output)
-      path    — absolute Path to the file
-      summary — first 300 chars of file content (enough to cluster without full text)
+      stem    - filename without .md (used to match cluster output)
+      path    - absolute Path to the file
+      summary - first 300 chars of file content (enough to cluster without full text)
     """
     digests = []
     for folder in ("entities", "concepts", "sources"):
@@ -658,7 +702,7 @@ Group them into 3-6 named clusters based on shared themes.
 ENTRIES:
 {entries_block}
 
-OUTPUT FORMAT — use this exact pattern, nothing else:
+OUTPUT FORMAT - use this exact pattern, nothing else:
 
 ===CLUSTER: Theme Name===
 Entry Stem 1, Entry Stem 2, Entry Stem 3
@@ -667,7 +711,7 @@ Entry Stem 1, Entry Stem 2, Entry Stem 3
 Rules:
 - Every entry must appear in exactly one cluster
 - Cluster names should be 2-4 words, Title Case
-- Use the exact stem names (inside [ ] above) — no paraphrasing
+- Use the exact stem names (inside [ ] above) - no paraphrasing
 - Minimum 3 entries per cluster; merge small groups into the nearest theme
 - Output ONLY the ===CLUSTER:...===END=== blocks
 """
@@ -724,7 +768,7 @@ def build_synthesis_prompt(cluster_name: str, entries_text: str, all_stems: list
     today = datetime.now().strftime("%Y-%m-%d")
     brand = load_brand_foundation()
     brand_section = f"""
-BRAND FOUNDATION (read before writing — match this voice, follow these rules):
+BRAND FOUNDATION (read before writing - match this voice, follow these rules):
 {brand}
 """ if brand else ""
     return f"""You are synthesizing insights from a personal knowledge base.
@@ -742,7 +786,7 @@ ALL KNOWN WIKI ENTRIES (use for [[wikilinks]]):
 Your task: find what these entries reveal TOGETHER that none states alone.
 Look for shared patterns, unexpected contradictions, and a non-obvious key insight.
 
-OUTPUT FORMAT — use this exact pattern:
+OUTPUT FORMAT - use this exact pattern:
 
 ===FILE: wiki/synthesis/Synthesis - {cluster_name}.md===
 # Synthesis: {cluster_name}
@@ -755,7 +799,7 @@ OUTPUT FORMAT — use this exact pattern:
 - Pattern 2 (seen in [[Entry C]], [[Entry D]], [[Entry E]])
 
 ## Contradictions Found
-- [[Entry A]] emphasizes X, while [[Entry B]] recommends Y — resolution: ...
+- [[Entry A]] emphasizes X, while [[Entry B]] recommends Y - resolution: ...
 
 ## Key Insight
 One paragraph: the non-obvious conclusion that ONLY emerges by reading these entries together.
@@ -819,7 +863,7 @@ def run_synthesis():
     print("Phase 2: Synthesizing each cluster...\n")
     for cluster_name, stems in clusters.items():
         if len(stems) < 3:
-            print(f"  Skipping [{cluster_name}] — only {len(stems)} entries (need 3+)")
+            print(f"  Skipping [{cluster_name}] - only {len(stems)} entries (need 3+)")
             continue
 
         # Collect full content for entries in this cluster (fuzzy match on stem)
@@ -836,12 +880,12 @@ def run_synthesis():
                 matched_paths.append(hit["path"])
 
         if len(matched_stems) < 3:
-            print(f"  Skipping [{cluster_name}] — fewer than 3 entries matched on disk")
+            print(f"  Skipping [{cluster_name}] - fewer than 3 entries matched on disk")
             continue
 
         # Incremental guard: skip if no entry has changed since last synthesis
         if not force and not needs_resynthesis(cluster_name, matched_paths):
-            print(f"  ⏭  Skipping [{cluster_name}] — unchanged since last synthesis")
+            print(f"  ⏭  Skipping [{cluster_name}] - unchanged since last synthesis")
             skipped_unchanged += 1
             continue
 
@@ -885,7 +929,7 @@ def update_wiki_index():
     """Regenerate wiki/index.md as a full table of contents of the vault.
 
     Scans all four wiki folders and writes a clean index with entry counts.
-    Always overwrites — index is a derived artifact, not a hand-edited file.
+    Always overwrites - index is a derived artifact, not a hand-edited file.
     """
     folders = [
         ("entities",  "Entities",  "people, companies, tools"),
@@ -899,7 +943,7 @@ def update_wiki_index():
         "# Wiki Index",
         f"*Last updated: {stamp}*",
         "",
-        "> Auto-generated by auto_ingest.py — do not edit by hand.",
+        "> Auto-generated by auto_ingest.py - do not edit by hand.",
         "",
     ]
 
@@ -915,7 +959,7 @@ def update_wiki_index():
             for p in entries:
                 lines.append(f"- [[{p.stem}]]")
         else:
-            lines.append("*None yet — ingest some files to populate this section.*")
+            lines.append("*None yet - ingest some files to populate this section.*")
         lines.append("")
 
     lines.insert(4, f"**Total entries: {total}**")
@@ -933,12 +977,12 @@ def update_wiki_index():
 
 
 def main():
-    # Synthesis mode — bypass ingest entirely
+    # Synthesis mode - bypass ingest entirely
     if "--synthesize" in sys.argv:
         run_synthesis()
         return
 
-    # Save mode — download a social media URL and transcribe it into raw/
+    # Save mode - download a social media URL and transcribe it into raw/
     if "--save" in sys.argv:
         idx = sys.argv.index("--save")
         if idx + 1 >= len(sys.argv):
@@ -969,6 +1013,16 @@ def main():
     
 
     raw_files = get_raw_files()
+
+    # Inbox backlog alert (CyrilXBT rule: never let inbox exceed 50)
+    backlog = len(raw_files)
+    if backlog > 50:
+        print(f"\n⚠️  INBOX BACKLOG ALERT: {backlog} files pending (threshold: 50)")
+        print("   Processing will continue, but schedule a cleanup session.")
+        print("   Move processed files to raw/processed/ to reduce backlog.\n")
+    elif backlog > 20:
+        print(f"   Note: {backlog} files pending. Consider processing soon.\n")
+
     if not raw_files:
         print("Second Brain ingest: nothing to process.")
         record_run()   # still stamp so the 48h clock resets
@@ -991,14 +1045,14 @@ def main():
         print(f"Processing [{kind}]: {raw_file.name}")
         content = extract_content(raw_file)
         if not content.strip():
-            print("  ⚠ No content extracted — skipping.")
+            print("  ⚠ No content extracted - skipping.")
             continue
 
         try:
             response = call_llm(build_prompt(content, raw_file.name, existing))
         except RuntimeError as e:
             print(f"  ERROR: {e}")
-            print("  Skipping — make sure Ollama is running (ollama serve)")
+            print("  Skipping - make sure Ollama is running (ollama serve)")
             continue
 
         pairs = parse_response(response)

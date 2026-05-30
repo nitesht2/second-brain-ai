@@ -28,12 +28,13 @@ echo "    ✓ Done"
 
 # Step 3: Copy vault template and scripts
 echo "📋 Step 3/7: Copying vault template and scripts..."
-cp -n "$REPO_DIR/vault-template/CLAUDE.md" "$VAULT/" 2>/dev/null || true
+cp -n "$REPO_DIR/vault-template/AGENTS.md" "$VAULT/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/index.md" "$VAULT/wiki/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/log.md" "$VAULT/wiki/" 2>/dev/null || true
 cp "$REPO_DIR/auto_ingest.py" "$VAULT/"
 cp "$REPO_DIR/scripts/daily_digest.py" "$HOME/.hermes/scripts/"
 cp "$REPO_DIR/scripts/file_watcher.sh" "$HOME/.hermes/scripts/"
+cp "$REPO_DIR/scripts/weekly_review.py" "$HOME/.hermes/scripts/"
 chmod +x "$HOME/.hermes/scripts/file_watcher.sh"
 echo "    ✓ Done"
 
@@ -112,7 +113,8 @@ echo "Services running:"
 echo "  • SecondBrain ingest    — daily at 4:07 AM (launchd)"
 echo "  • File watcher          — real-time (launchd)"
 echo "  • Daily digest          — 6 AM (cron via launchd)"
+echo "  • Weekly review         — Sundays 8 AM (launchd)"
 echo ""
-echo "Docs: $VAULT/CLAUDE.md"
+echo "Docs: $VAULT/AGENTS.md"
 echo "Repo: https://github.com/nitesht2/second-brain-ai"
 echo ""
