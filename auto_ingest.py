@@ -3,13 +3,16 @@
 Second Brain Auto-Ingest
 
 Scans ~/SecondBrain/raw/ for unprocessed files and ingests them
-using OpenRouter (free Gemma 3 27B), Ollama (free, local Gemma 3 4B),
-or DeepSeek Flash (paid, better quality).
+using OpenRouter (default, free models) or DeepSeek (paid, 1M context).
 
 Provider selection (default: openrouter):
-    export SECOND_BRAIN_PROVIDER=openrouter  # use OpenRouter (Gemma 3 27B free), fallback to Ollama
-    export SECOND_BRAIN_PROVIDER=openrouter  # use OpenRouter (default), auto-fallback to Ollama
-    export SECOND_BRAIN_PROVIDER=ollama      # local Gemma 3 4B only
+    export SECOND_BRAIN_PROVIDER=openrouter   (default, uses OpenRouter)
+    export OPENROUTER_API_KEY=sk-or-...        (required for OpenRouter)
+    export OPENROUTER_MODEL=openrouter/owl-alpha  (optional)
+
+    export SECOND_BRAIN_PROVIDER=deepseek     (use DeepSeek direct)
+    export DEEPSEEK_API_KEY=sk-...            (required for DeepSeek)
+    export DEEPSEEK_MODEL=deepseek-chat       (optional)
 
 Supported input formats:
   .md    → markdown clips (Web Clipper output) - best for social media (TikTok, Instagram, Twitter)
@@ -60,42 +63,42 @@ BRAND_DIR   = Path(os.environ.get(
     str(Path.home() / ".voice"),
 ))
 
-OLLAMA_URL      = "http://127.0.0.1:11434/api/generate"
-MODEL           = "gemma3:4b"         # reliable structured output; qwen3.5:* also works (answer is in 'thinking' field)
+MODEL               = "deepseek-chat"     # placeholder, actual model from DEEPSEEK_MODEL
 TEMPERATURE     = 0.2                 # low = more consistent structure
 MAX_TOKENS      = 3000
-RAW_CHUNK       = 3500                # chars fed to model per file
+RAW_CHUNK       = 15000                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
 MIN_HOURS       = 48                  # skip if last run was less than this many hours ago
 
 # ── Provider config ───────────────────────────────────────────────────────────
-# Switch between OpenRouter (free Gemma 3 27B via API) and local Ollama (free Gemma 3 4B).
+# Two providers supported. Set SECOND_BRAIN_PROVIDER to switch.
 #
-#   To use OpenRouter (default):
-#     export SECOND_BRAIN_PROVIDER=openrouter   (or just don't set it)
-#     export OPENROUTER_API_KEY=sk-...          (required)
+#   OpenRouter (default) - free models like OWL-Alpha
+#     export SECOND_BRAIN_PROVIDER=openrouter
+#     export OPENROUTER_API_KEY=sk-or-...     (required)
+#     export OPENROUTER_MODEL=openrouter/owl-alpha  (optional)
 #
-#   To use local Ollama:
-#     export SECOND_BRAIN_PROVIDER=ollama
-#
-# OpenRouter fallback: if OpenRouter fails, auto-falls back to local Ollama.
+#   DeepSeek - paid, higher quality, 1M context
+#     export SECOND_BRAIN_PROVIDER=deepseek
+#     export DEEPSEEK_API_KEY=sk-...          (required)
+#     export DEEPSEEK_MODEL=deepseek-chat     (optional)
 
 PROVIDER            = os.environ.get("SECOND_BRAIN_PROVIDER", "openrouter").lower()
-OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
 
-# ── OpenRouter config ──
-OPENROUTER_MODEL    = "google/gemma-3-27b-it:free"
+# OpenRouter config
+OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL    = os.environ.get("OPENROUTER_MODEL", "openrouter/owl-alpha")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# ── Ollama config (fallback) ──
-OLLAMA_URL          = "http://127.0.0.1:11434/api/generate"
-OLLAMA_MODEL        = "gemma3:4b"
+# DeepSeek config
+DEEPSEEK_API_KEY    = os.environ.get("DEEPSEEK_API_KEY", "")
+DEEPSEEK_MODEL      = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_BASE_URL   = "https://api.deepseek.com/v1/chat/completions"
 
-MODEL               = "gemma3:4b"         # used by call_ollama, kept for backward compat
-TEMPERATURE         = 0.2                 # low = more consistent structure
-MAX_TOKENS       = 3000
+TEMPERATURE         = 0.2
+MAX_TOKENS          = 4000
 # Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
-# free Ollama/Gemma 3 for the rest of the calendar month so clips still
+# DeepSeek Flash for the rest of the calendar month so clips still
 # get processed - you just stop paying. Resets on the 1st of each month.
 
 # Running tallies for the current ingest session
@@ -362,42 +365,10 @@ def get_existing_wiki_stems():
     return sorted(set(stems))
 
 
-def call_ollama(prompt: str) -> str:
-    """Call Ollama REST API and return the response text."""
-    payload = json.dumps({
-        "model": MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "options": {
-            "temperature": TEMPERATURE,
-            "num_predict": MAX_TOKENS,
-        }
-    }).encode()
-
-    req = urllib.request.Request(
-        OLLAMA_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            body = json.loads(resp.read())
-            # qwen3.* thinking models put the final answer in 'thinking' and leave 'response' empty
-            text = body.get("response", "").strip()
-            if not text:
-                text = body.get("thinking", "").strip()
-            return text
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Ollama not reachable: {e}")
-
-
 def call_openrouter(prompt: str) -> str:
-    """Call OpenRouter API (OpenAI-compatible). Uses google/gemma-3-27b-it:free.
-    Falls back to local Ollama if OpenRouter fails or API key is missing."""
+    """Call OpenRouter API and return the response text."""
     if not OPENROUTER_API_KEY:
-        print("  ⚠ OPENROUTER_API_KEY not set - falling back to Ollama")
-        return call_ollama(prompt)
+        raise RuntimeError("OPENROUTER_API_KEY not set")
 
     payload = json.dumps({
         "model": OPENROUTER_MODEL,
@@ -425,19 +396,45 @@ def call_openrouter(prompt: str) -> str:
         raise RuntimeError(f"Unexpected OpenRouter API response: {e}")
 
 
-def call_llm(prompt: str) -> str:
-    """Route to OpenRouter or Ollama based on SECOND_BRAIN_PROVIDER env var.
+def call_deepseek(prompt: str) -> str:
+    """Call DeepSeek API and return the response text."""
+    if not DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY not set")
 
-    If OpenRouter fails for any reason, automatically falls back to local
-    Ollama (Gemma 3) so ingest never silently fails.
+    payload = json.dumps({
+        "model": DEEPSEEK_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS,
+    }).encode()
+
+    req = urllib.request.Request(
+        DEEPSEEK_BASE_URL,
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            body = json.loads(resp.read())
+            return body["choices"][0]["message"]["content"].strip()
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"DeepSeek API not reachable: {e}")
+    except (KeyError, IndexError) as e:
+        raise RuntimeError(f"Unexpected DeepSeek API response: {e}")
+
+
+def call_llm(prompt: str) -> str:
+    """Route to configured provider.
+
+    OpenRouter (default) or DeepSeek based on SECOND_BRAIN_PROVIDER env var.
     """
-    if PROVIDER == "openrouter":
-        try:
-            return call_openrouter(prompt)
-        except RuntimeError as e:
-            print(f"  ⚠ OpenRouter failed ({e}) - falling back to Ollama/Gemma 3")
-            return call_ollama(prompt)
-    return call_ollama(prompt)
+    if PROVIDER == "deepseek":
+        return call_deepseek(prompt)
+    return call_openrouter(prompt)
 
 
 def load_brand_foundation() -> str:
@@ -689,7 +686,7 @@ def collect_wiki_digests() -> list:
 
 
 def build_cluster_prompt(digests: list) -> str:
-    """Ask Ollama to group wiki entries into 3-6 named theme clusters."""
+    """Ask the LLM to group wiki entries into 3-6 named theme clusters."""
     entries_block = "\n".join(
         f"{i+1}. [{d['stem']}] {d['summary']}"
         for i, d in enumerate(digests)
@@ -718,9 +715,9 @@ Rules:
 
 
 def parse_clusters(response: str) -> dict:
-    """Extract cluster_name → [entry stems] from Ollama cluster response.
+    """Extract cluster_name -> [entry stems] from LLM cluster response.
 
-    Strips any surrounding brackets the model may echo (e.g. [Anthropic] → Anthropic).
+    Strips any surrounding brackets the model may echo (e.g. [Anthropic] -> Anthropic).
     """
     pattern = r'===CLUSTER:\s*([^\n]+)===\n(.*?)===END==='
     matches = re.findall(pattern, response, re.DOTALL)
@@ -821,8 +818,7 @@ Output ONLY the ===FILE:...===END=== block. Use real [[wikilinks]] from the entr
 
 def run_synthesis():
     """Two-phase synthesis: cluster all wiki entries, then synthesize each cluster."""
-    provider_label = f"OpenRouter ({OPENROUTER_MODEL}) → Gemma 3 fallback" if PROVIDER == "openrouter" else f"Ollama ({MODEL})"
-    print(f"{'[DRY RUN] ' if DRY_RUN else ''}Starting wiki synthesis...")
+    provider_label = f"OpenRouter ({OPENROUTER_MODEL})" if PROVIDER == "openrouter" else f"DeepSeek ({DEEPSEEK_MODEL})"
     print(f"Provider: {provider_label}\n")
 
     digests = collect_wiki_digests()
@@ -839,7 +835,7 @@ def run_synthesis():
         return
     except RuntimeError as e:
         print(f"  ERROR: {e}")
-        print("  Make sure Ollama is running (open Ollama.app)")
+        print("  Make sure your LLM provider is running and accessible")
         return
 
     clusters = parse_clusters(cluster_response)
@@ -977,7 +973,10 @@ def update_wiki_index():
 
 
 def main():
-    # Synthesis mode - bypass ingest entirely
+    global DRY_RUN
+    DRY_RUN = "--dry-run" in sys.argv
+
+    # Synthesis mode -- bypass ingest entirely
     if "--synthesize" in sys.argv:
         run_synthesis()
         return
@@ -1030,8 +1029,7 @@ def main():
         return
 
     existing = get_existing_wiki_stems()
-    provider_label = f"OpenRouter ({OPENROUTER_MODEL}) → Gemma 3 fallback" if PROVIDER == "openrouter" else f"Ollama ({MODEL})"
-    print(f"{'[DRY RUN] ' if DRY_RUN else ''}Found {len(raw_files)} raw file(s), {len(existing)} existing wiki entries")
+    provider_label = f"OpenRouter ({OPENROUTER_MODEL})" if PROVIDER == "openrouter" else f"DeepSeek ({DEEPSEEK_MODEL})"
     print(f"Provider: {provider_label}\n")
 
     session_log = []
@@ -1052,7 +1050,7 @@ def main():
             response = call_llm(build_prompt(content, raw_file.name, existing))
         except RuntimeError as e:
             print(f"  ERROR: {e}")
-            print("  Skipping - make sure Ollama is running (ollama serve)")
+            print("  Skipping - check API connectivity")
             continue
 
         pairs = parse_response(response)
