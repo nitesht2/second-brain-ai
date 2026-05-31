@@ -27,3 +27,10 @@ __pycache__/
 *.log
 ingest-daemon.log
 graphify-out/
+
+# Secrets — never commit (keys live in VPS ~/.hermes/*/.env, gitignored)
+.env
+*.env
+.secondbrain.env
+.frag
+*.bak.*

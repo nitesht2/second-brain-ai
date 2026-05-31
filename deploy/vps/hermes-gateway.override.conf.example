@@ -1,0 +1,7 @@
+# systemd drop-in for the per-profile Hermes gateway.
+# Path: ~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d/override.conf
+# WHY: Hermes regenerates the main unit on restart (wiping inline edits), and the
+# generated unit has no EnvironmentFile — so the profile .env (bot token, model key)
+# never reaches the gateway process. This drop-in survives regeneration and force-loads it.
+[Service]
+EnvironmentFile=/root/.hermes/profiles/secondbrain-agent/.env

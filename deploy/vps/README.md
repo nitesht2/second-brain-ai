@@ -53,15 +53,43 @@ Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
 7. **Verify** — drop a file in `raw/`; within ~60 s a wiki page appears and the
    raw file moves to `raw/processed/`.
 
-## Discord query layer (TODO — needs a bot token)
+## Discord query layer (DONE — "Chanakya" bot, live & verified)
 
-Not yet wired (VPS `.env` has no Discord token). To enable iPhone/Mac query:
-1. Put a Discord bot token in `/root/.hermes/.env` (`DISCORD_BOT_TOKEN=...`).
-2. `hermes gateway setup` (interactive) → bind discord → secondbrain-agent.
-3. Run the gateway as a service (`hermes gateway run`).
-4. **Stop `secondbrain-dispatch.service`** — the gateway has an embedded
-   dispatcher; running both races for kanban claims.
-5. DM the bot → `hermes pairing approve <code>` (allow_all_users=false locks others out).
+Two-way plain-English chat from phone/desktop, powered by Hermes + DeepSeek flash.
+Per-profile gateway runs as a systemd **user** service (linger enabled → survives logout).
+
+Setup (all in the secondbrain-agent PROFILE, not global):
+1. Put the bot token + channel in `profiles/secondbrain-agent/.env`:
+   `DISCORD_BOT_TOKEN=...`, `DISCORD_HOME_CHANNEL=<channel id>`,
+   `DISCORD_ALLOWED_USERS=<your discord user id>` (gateway is locked;
+   allow_all_users=false denies everyone else, no auto-pairing).
+2. Enable the platform in `profiles/secondbrain-agent/config.yaml`:
+   ```yaml
+   platforms:
+     discord:
+       enabled: true
+   ```
+   and in the `discord:` block set `require_mention: false` (frictionless chat)
+   and `auto_thread: false` (replies inline, not in threads).
+3. Install + run the gateway:
+   `hermes gateway install -p secondbrain-agent` then `hermes gateway start -p secondbrain-agent`.
+4. **Force the profile .env into the service** via a drop-in (the generated unit
+   has no EnvironmentFile and Hermes rewrites the unit on restart):
+   copy `hermes-gateway.override.conf.example` to
+   `~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d/override.conf`,
+   then `systemctl --user daemon-reload && systemctl --user restart hermes-gateway-secondbrain-agent`.
+5. **Stop the standalone dispatcher** — the gateway embeds one; running both
+   races for kanban claims: `systemctl stop secondbrain-dispatch` (or leave it
+   if you keep ingest dispatch board-scoped and gateway only for chat — but the
+   gateway dispatches too, so prefer stopping the standalone).
+
+### Discord gotchas (cost real debugging time)
+- **Slash-command cap (error 30032):** if the bot accumulates 100 global slash
+  commands, sync crashes `_run_post_connect_initialization` and **silently blocks
+  message handling**. Clear them:
+  `curl -X PUT -H "Authorization: Bot $TOKEN" -d '[]' https://discord.com/api/v10/applications/<APP_ID>/commands`
+- Named-profile gateways don't inherit the global `~/.hermes/.env` — hence the drop-in.
+- Every gateway restart posts a one-off "Gateway shutting down" notice to the channel.
 
 ## Gotchas learned the hard way
 
