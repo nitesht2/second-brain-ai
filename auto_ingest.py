@@ -45,6 +45,28 @@ import urllib.error
 from pathlib import Path
 from datetime import datetime
 
+
+def _load_env_file(path: Path) -> None:
+    """Load KEY=value lines from a dotenv-style file into os.environ.
+
+    launchd does not source ~/.zshrc, so scheduled runs have no API keys.
+    This reads secrets from a local file (kept out of git, chmod 600) so the
+    same key works for both interactive and launchd-triggered runs. Existing
+    environment variables win, so an inline `export` still overrides the file.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(Path.home() / ".secondbrain.env")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 VAULT       = Path(os.environ.get(
@@ -831,8 +853,6 @@ def run_synthesis():
 
     try:
         cluster_response = call_llm(build_cluster_prompt(digests))
-        print(f"\n  🛑 COST CAP HIT: {e}")
-        return
     except RuntimeError as e:
         print(f"  ERROR: {e}")
         print("  Make sure your LLM provider is running and accessible")
@@ -892,8 +912,6 @@ def run_synthesis():
             synthesis_response = call_llm(
                 build_synthesis_prompt(cluster_name, entries_text, all_stems)
             )
-            print(f"\n    🛑 COST CAP HIT: {e}")
-            return
         except RuntimeError as e:
             print(f"    ERROR: {e}")
             continue

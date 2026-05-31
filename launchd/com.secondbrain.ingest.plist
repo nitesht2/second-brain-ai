@@ -9,7 +9,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/python3</string>
-        <string>$HOME/SecondBrain/auto_ingest.py</string>
+        <string>/Users/nitesh/Projects/second-brain-ai/auto_ingest.py</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -24,17 +24,17 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>$HOME/SecondBrain/outputs/ingest-daemon.log</string>
+    <string>/Users/nitesh/SecondBrain/outputs/ingest-daemon.log</string>
 
     <key>StandardErrorPath</key>
-    <string>$HOME/SecondBrain/outputs/ingest-daemon.log</string>
+    <string>/Users/nitesh/SecondBrain/outputs/ingest-daemon.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
+        <key>HOME</key>
+        <string>/Users/nitesh</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-        <key>SECOND_BRAIN_PROVIDER</key>
-        <string>openrouter</string>
     </dict>
 </dict>
 </plist>

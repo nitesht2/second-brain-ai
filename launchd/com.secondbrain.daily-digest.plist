@@ -4,12 +4,12 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.secondbrain.ingest</string>
+    <string>com.secondbrain.daily-digest</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>$HOME/.hermes/scripts/daily_digest.py</string>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>/Users/nitesh/Projects/second-brain-ai/scripts/daily_digest.py</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -24,13 +24,15 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>$HOME/SecondBrain/outputs/digest.log</string>
+    <string>/Users/nitesh/SecondBrain/outputs/digest.log</string>
 
     <key>StandardErrorPath</key>
-    <string>$HOME/SecondBrain/outputs/digest.log</string>
+    <string>/Users/nitesh/SecondBrain/outputs/digest.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
+        <key>HOME</key>
+        <string>/Users/nitesh</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
