@@ -6,8 +6,8 @@
     <string>com.secondbrain.weekly-review</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>/Users/nitesh/SecondBrain/../Projects/second-brain-ai/scripts/weekly_review.py</string>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>/Users/nitesh/Projects/second-brain-ai/scripts/weekly_review.py</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>
@@ -24,5 +24,12 @@
     <string>/Users/nitesh/SecondBrain/outputs/weekly-review-error.log</string>
     <key>RunAtLoad</key>
     <false/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nitesh</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
 </dict>
 </plist>

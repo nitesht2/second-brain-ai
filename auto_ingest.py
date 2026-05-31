@@ -45,6 +45,28 @@ import urllib.error
 from pathlib import Path
 from datetime import datetime
 
+
+def _load_env_file(path: Path) -> None:
+    """Load KEY=value lines from a dotenv-style file into os.environ.
+
+    launchd does not source ~/.zshrc, so scheduled runs have no API keys.
+    This reads secrets from a local file (kept out of git, chmod 600) so the
+    same key works for both interactive and launchd-triggered runs. Existing
+    environment variables win, so an inline `export` still overrides the file.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+_load_env_file(Path.home() / ".secondbrain.env")
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 VAULT       = Path(os.environ.get(
@@ -68,7 +90,7 @@ TEMPERATURE     = 0.2                 # low = more consistent structure
 MAX_TOKENS      = 3000
 RAW_CHUNK       = 15000                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
-MIN_HOURS       = 48                  # skip if last run was less than this many hours ago
+MIN_HOURS       = 24                  # skip if last run was less than this many hours ago
 
 # ── Provider config ───────────────────────────────────────────────────────────
 # Two providers supported. Set SECOND_BRAIN_PROVIDER to switch.
@@ -724,7 +746,17 @@ def parse_clusters(response: str) -> dict:
     clusters = {}
     for name, body in matches:
         raw_stems = re.split(r'[,\n]+', body)
-        stems = [s.strip().strip('[]').strip() for s in raw_stems if s.strip().strip('[]').strip()]
+        cleaned = [s.strip().strip('[]').strip() for s in raw_stems if s.strip().strip('[]').strip()]
+        # The model often repeats the same stem within a cluster, which inflates
+        # entry counts and feeds the same entry text into synthesis multiple
+        # times. Dedup on normalized form while preserving first-seen order.
+        seen = set()
+        stems = []
+        for s in cleaned:
+            key = _norm(s)
+            if key and key not in seen:
+                seen.add(key)
+                stems.append(s)
         if stems:
             clusters[name.strip()] = stems
     return clusters
@@ -831,8 +863,6 @@ def run_synthesis():
 
     try:
         cluster_response = call_llm(build_cluster_prompt(digests))
-        print(f"\n  🛑 COST CAP HIT: {e}")
-        return
     except RuntimeError as e:
         print(f"  ERROR: {e}")
         print("  Make sure your LLM provider is running and accessible")
@@ -892,8 +922,6 @@ def run_synthesis():
             synthesis_response = call_llm(
                 build_synthesis_prompt(cluster_name, entries_text, all_stems)
             )
-            print(f"\n    🛑 COST CAP HIT: {e}")
-            return
         except RuntimeError as e:
             print(f"    ERROR: {e}")
             continue
