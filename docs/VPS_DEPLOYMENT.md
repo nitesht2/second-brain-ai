@@ -51,6 +51,29 @@ Missing piece is only the running gateway (config `platforms: {}` today).
 | Kanban state | Independent VPS instance (recommended; no SQLite sync) |
 | Query layer | Hermes Discord gateway (iPhone + Mac); Obsidian = visual bonus |
 | Devices | iPhone (Discord app for Q&A) + MacBook (Obsidian + Discord) |
+| **Ingest worker** | **FULLY AGENTIC — Hermes secondbrain-agent + llm-wiki skill.** Retire auto_ingest.py as the active worker (keep in repo as fallback/reference). |
+| Sync | Syncthing (free). Mac reads vault; iPhone queries via Discord (no iOS Obsidian sync needed). |
+| VPS specs | Hostinger KVM 2: 2 vCPU, 8 GB RAM, 100 GB, Ubuntu 24.04 (~3.4 GB already used) |
+
+## Fully-agentic ingest (the model shift)
+
+The `llm-wiki` skill (v2.1.0, already in secondbrain-agent) is a complete
+agentic ingest + query + lint engine. It REPLACES the fixed-prompt
+auto_ingest.py: the agent orients (reads SCHEMA/index/log), checks existing
+pages before writing (dedup-aware), cross-links, handles contradictions, and
+maintains index/log. Trigger = watcher -> kanban task -> Hermes dispatches
+secondbrain-agent -> agent ingests new raw/ files; plus a cron heartbeat.
+
+Reconciliation work this requires:
+1. **Write a custom `SCHEMA.md`** describing the EXISTING vault layout
+   (entities/concepts/sources/synthesis/episodic/projects, 376 files) so the
+   agent respects current structure — do NOT migrate files to the skill's
+   default entities/concepts/comparisons/queries layout.
+2. **Set `WIKI_PATH`** env to the vault path on the VPS.
+3. **Cost/RAM:** multi-turn agent per source (vs 1 LLM call). Throttle agent
+   concurrency on the 8 GB box; cost rises above $0.04/mo but stays low on
+   owl-alpha/DeepSeek. daily_digest.py (feed fetcher) and the watcher stay as
+   thin scripts that feed raw/; the AGENT does the actual ingest/lint/synthesis.
 
 ## Security — RESOLVED on Mac source config (carries to VPS)
 
@@ -100,19 +123,22 @@ Audit result: the codebase is already Linux-portable.
 - OPEN per-board decision: which integrations (Postiz, Discord channels) run on
   the VPS vs stay Mac-only — defer to Phase 2 config scoping.
 
-### Phase 1 — Base VPS + Second Brain pipeline
+### Phase 1 — Base VPS + vault + feed fetcher (NOT the ingest worker)
+With ingest now agentic (Phase 2), Phase 1 is just the substrate:
 - System deps: `python3-venv`, `ffmpeg`, `git`.
 - Clone repo, venv, `pip install -r requirements.txt -r requirements-vps.txt`.
 - If using browser video capture: `python -m playwright install --with-deps chromium`.
-- `~/.secondbrain.env` (chmod 600) — same env-file pattern as the Mac fix.
-- systemd timers (replace launchd):
-  - `secondbrain-ingest.timer`  -> daily 04:07
-  - `secondbrain-digest.timer`  -> daily 06:00
-  - `secondbrain-weekly.timer`  -> Sun 08:00
-- Verify a manual ingest run end-to-end on the VPS.
+- `~/.secondbrain.env` (chmod 600).
+- Place the vault on the VPS; **author `SCHEMA.md`** describing the existing
+  layout so the agent (Phase 2) respects entities/concepts/sources/synthesis/
+  episodic/projects.
+- Thin feed fetcher only: `secondbrain-digest.timer` -> daily 06:00 runs
+  daily_digest.py to drop GitHub/HN/model news into raw/generated/. The AGENT
+  ingests it in Phase 2. (No ingest/weekly timers — Hermes owns those.)
 
-### Phase 2 — Hermes multi-agent server + Discord query layer (THE PRIORITY)
-This is the point of the migration: query any time from Discord.
+### Phase 2 — Hermes = ingest + query + lint worker (THE CORE)
+This is the point of the migration: Hermes does ALL the work (fully agentic)
+and is queryable any time from Discord.
 Official install (confirmed from repo, Linux/Python 3.11, "runs on a $5 VPS"):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
@@ -133,10 +159,16 @@ curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scri
   - built-in cron scheduler — processes scheduled board tasks.
 - **Pair yourself**: DM the bot from Discord (iPhone or Mac) -> `hermes pairing
   approve <code>` on the VPS. Verify a stranger cannot query.
-- Smoke test: from Discord, ask "what's in my wiki about X" -> agent reads vault
-  -> answers. THIS is the success criterion for the whole project.
-- Wire the watcher (rewritten to use inotifywait on Linux instead of fswatch) to
-  create `secondbrain` kanban tasks; confirm the dispatcher consumes them.
+- **Agentic ingest loop** (the worker): watcher (inotifywait on Linux) -> creates
+  a `secondbrain` kanban task on new raw/ file -> Hermes dispatches
+  secondbrain-agent -> agent runs llm-wiki ingest (orient, check existing,
+  write+crosslink, update index/log). Plus a Hermes cron heartbeat for missed
+  files + periodic lint (llm-wiki lint replaces weekly_review.py).
+- Set `WIKI_PATH` for the skill; confirm obsidian MCP repointed to VPS vault.
+- Throttle agent concurrency (8 GB box) so ingest + whisper don't OOM.
+- Smoke tests (success criteria for the whole project):
+  1. Drop a file in raw/ -> agent ingests it into the wiki agentically.
+  2. From Discord, ask "what's in my wiki about X" -> agent answers from vault.
 
 Note: "$5 VPS" is the idle/light-use claim. Concurrent multi-board agent runs +
 CPU whisper still need real headroom — see RAM budget risk above.
