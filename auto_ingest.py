@@ -90,7 +90,7 @@ TEMPERATURE     = 0.2                 # low = more consistent structure
 MAX_TOKENS      = 3000
 RAW_CHUNK       = 15000                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
-MIN_HOURS       = 48                  # skip if last run was less than this many hours ago
+MIN_HOURS       = 24                  # skip if last run was less than this many hours ago
 
 # ── Provider config ───────────────────────────────────────────────────────────
 # Two providers supported. Set SECOND_BRAIN_PROVIDER to switch.
