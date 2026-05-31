@@ -91,6 +91,39 @@ Setup (all in the secondbrain-agent PROFILE, not global):
 - Named-profile gateways don't inherit the global `~/.hermes/.env` — hence the drop-in.
 - Every gateway restart posts a one-off "Gateway shutting down" notice to the channel.
 
+## Mac-free clipping via residential proxy
+
+Datacenter IPs (your VPS) are blocked by YouTube/TikTok for scraping. A residential
+proxy makes yt-dlp look like a home connection. Any provider works (DataImpulse
+~$1/GB, IPRoyal, etc.) — all give an `http://user:pass@host:port` string.
+
+1. Buy a small residential (NOT datacenter) plan, get the endpoint string.
+2. Add to the profile `.env` (kept out of git):
+   ```
+   BRAIN_PROXY=http://USER:PASS@HOST:PORT
+   ```
+3. `scripts/clip.py` reads `BRAIN_PROXY` and routes yt-dlp through it. Restart the
+   gateway. Then a video URL clips fully on the VPS (no Mac).
+
+## X / Twitter search + ingest via xurl
+
+Install: `curl -fsSL https://raw.githubusercontent.com/xdevplatform/xurl/main/install.sh | bash`
+
+Simplest auth for read/search is **app-only bearer** (no browser OAuth needed):
+```
+xurl auth app --bearer-token YOUR_BEARER_TOKEN   # from developer.x.com (pay-as-you-go plan)
+xurl search "QUERY" -n 10                          # verify
+```
+The X dev app/project must be on a plan that allows recent search (pay-as-you-go).
+For posting *as* a user you'd instead do the OAuth2 flow (`xurl auth oauth2 --app my-app`
+via an `ssh -L 8080:localhost:8080` tunnel) — not needed for ingest.
+
+**Profile-home gotcha:** the agent runs with `HOME=<profile>/home`, so xurl's
+`~/.xurl` (default `/root/.xurl`) isn't found. Symlink it:
+```
+ln -sf /root/.xurl /root/.hermes/profiles/secondbrain-agent/home/.xurl
+```
+
 ## Gotchas learned the hard way
 
 - `kanban daemon` is deprecated (dispatcher now lives in the gateway). The
