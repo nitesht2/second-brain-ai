@@ -1,0 +1,15 @@
+[Unit]
+Description=Second Brain kanban dispatcher (routes tasks to secondbrain-agent)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/SecondBrain
+ExecStart=/usr/local/bin/hermes kanban --board secondbrain daemon --force --interval 60 --max 1 --pidfile /run/sb-dispatch.pid
+Restart=always
+RestartSec=10
+Environment=HOME=/root
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=multi-user.target

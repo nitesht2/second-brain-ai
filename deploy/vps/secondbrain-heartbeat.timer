@@ -1,0 +1,9 @@
+[Unit]
+Description=Second Brain daily heartbeat
+
+[Timer]
+OnCalendar=*-*-* 04:07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
