@@ -1,0 +1,24 @@
+# VPS / Linux runtime deps (extends requirements.txt)
+#
+# The Mac uses whisper-cli (whisper.cpp, Metal GPU) for transcription, so the
+# base requirements.txt stays lean. On a headless Linux VPS there is no Metal
+# and no whisper-cli, so social_downloader.py falls back to CPU transcription —
+# faster-whisper (int8, RAM-light) is the preferred path.
+#
+# Install on the VPS:
+#   pip install -r requirements.txt -r requirements-vps.txt
+#
+# System packages required first (apt):
+#   sudo apt install -y ffmpeg
+#   # playwright browser (only if using the browser-based video downloader):
+#   python -m playwright install --with-deps chromium
+
+-r requirements.txt
+
+# CPU transcription (preferred fallback on Linux — see transcribe() in social_downloader.py)
+faster-whisper>=1.0
+
+# Browser-based video/audio capture (social_downloader.py).
+# NOTE: pulls a full Chromium (~400MB disk + RAM during runs). On a small VPS
+# consider switching the downloader to yt-dlp instead — lighter, no browser.
+playwright>=1.40
