@@ -1,0 +1,13 @@
+[Unit]
+Description=Second Brain raw/ file watcher (inotify -> kanban ingest task)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/root/SecondBrain/scripts/sb_watcher.sh
+Restart=always
+RestartSec=5
+Environment=HOME=/root
+
+[Install]
+WantedBy=multi-user.target
