@@ -746,7 +746,17 @@ def parse_clusters(response: str) -> dict:
     clusters = {}
     for name, body in matches:
         raw_stems = re.split(r'[,\n]+', body)
-        stems = [s.strip().strip('[]').strip() for s in raw_stems if s.strip().strip('[]').strip()]
+        cleaned = [s.strip().strip('[]').strip() for s in raw_stems if s.strip().strip('[]').strip()]
+        # The model often repeats the same stem within a cluster, which inflates
+        # entry counts and feeds the same entry text into synthesis multiple
+        # times. Dedup on normalized form while preserving first-seen order.
+        seen = set()
+        stems = []
+        for s in cleaned:
+            key = _norm(s)
+            if key and key not in seen:
+                seen.add(key)
+                stems.append(s)
         if stems:
             clusters[name.strip()] = stems
     return clusters
