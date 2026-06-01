@@ -34,3 +34,8 @@ graphify-out/
 .secondbrain.env
 .frag
 *.bak.*
+
+# Local agent/tooling dirs (not project code)
+.agents/
+.claude/
+skills-lock.json
