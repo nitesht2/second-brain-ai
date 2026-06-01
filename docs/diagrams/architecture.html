@@ -154,7 +154,7 @@
 <body>
 
 <h1>Second Brain — Architecture</h1>
-<div class="subtitle">Always-on agentic knowledge base on Hostinger VPS, queryable from Discord. Mac = capture; VPS = brain.</div>
+<div class="subtitle">Always-on agentic knowledge base on a Linux VPS, queryable from Discord. Mac = capture; VPS = brain.</div>
 
 <div class="legend">
   <span class="lg-user">User / Devices</span>
@@ -177,7 +177,7 @@
       <div class="col-title">User</div>
       <div class="node border-user">
         <div class="title">📱 iPhone</div>
-        <div class="meta">Discord app → DM Chanakya</div>
+        <div class="meta">Discord app → DM the bot</div>
       </div>
       <div class="node border-user">
         <div class="title">💻 MacBook (M4)</div>
@@ -205,7 +205,7 @@
         </ul>
       </div>
       <div class="node border-agent">
-        <div class="title">Paste URL → Chanakya (Discord)</div>
+        <div class="title">Paste URL → the bot (Discord)</div>
         <div class="meta">Bypasses Mac. Article / video / tweet link.</div>
       </div>
     </div>
@@ -219,7 +219,7 @@
       </div>
       <div class="node border-ext">
         <div class="title">Video (YouTube · TikTok · IG · podcasts)</div>
-        <div class="meta">via DataImpulse residential proxy</div>
+        <div class="meta">via Residential proxy (e.g. DataImpulse, IPRoyal)</div>
         <ul>
           <li>YouTube → captions first (fast, exact)</li>
           <li>else yt-dlp audio → faster-whisper CPU</li>
@@ -276,7 +276,7 @@
       </div>
       <div class="arrow">▼</div>
       <div class="node border-agent">
-        <div class="title">🧠 secondbrain-agent (Chanakya)</div>
+        <div class="title">🧠 secondbrain-agent</div>
         <div class="meta">Hermes Agent v0.14 · DeepSeek V4 Flash</div>
         <ul>
           <li>Skill: <code>llm-wiki</code> (orient → check → write)</li>
@@ -289,7 +289,7 @@
         <div class="title">Hermes Gateway (Discord)</div>
         <div class="meta"><code>hermes-gateway-secondbrain-agent.service</code></div>
         <ul>
-          <li>Bot: <strong>Chanakya</strong> (#second-brain)</li>
+          <li>Bot: <strong>your bot</strong> (#second-brain)</li>
           <li><code>allow_all_users: false</code> + allowlist</li>
           <li>Embedded dispatcher (replaces standalone)</li>
         </ul>
@@ -420,12 +420,12 @@
   <div class="pillar-title">4 · Infra & security</div>
   <div class="grid">
     <div>
-      <div class="col-title">VPS (Hostinger KVM 2)</div>
+      <div class="col-title">VPS (small KVM, ~2 vCPU / 8 GB)</div>
       <div class="node border-vps">
         <div class="title">Ubuntu 24.04 · 2 vCPU · 8 GB RAM · 100 GB</div>
         <div class="meta">+ 4 GB swap (OOM insurance)</div>
         <ul>
-          <li>Co-tenants: Temporal · Postiz · quadstar-deals</li>
+          <li>Co-tenants: (any other services you host)</li>
           <li>Free RAM headroom for brain: ~3.4 GB</li>
         </ul>
       </div>
@@ -433,7 +433,7 @@
     <div>
       <div class="col-title">External services</div>
       <div class="node border-ext">
-        <div class="title">DataImpulse residential proxy</div>
+        <div class="title">Residential proxy (e.g. DataImpulse, IPRoyal)</div>
         <div class="meta">$1/GB · never-expires · <code>BRAIN_PROXY</code> env</div>
       </div>
       <div class="node border-ext">
@@ -442,7 +442,7 @@
       </div>
       <div class="node border-ext">
         <div class="title">X Developer API · Discord Bot</div>
-        <div class="meta">Pay-as-you-go · Chanakya bot</div>
+        <div class="meta">Pay-as-you-go · your bot</div>
       </div>
     </div>
     <div>
@@ -469,7 +469,7 @@
 <div class="flow">
 <span class="hi">CAPTURE FLOWS</span>
 
-  iPhone Discord  ──► <span class="hp">Chanakya gateway</span>  ──► auto-detect URL type
+  iPhone Discord  ──► <span class="hp">bot gateway</span>  ──► auto-detect URL type
                                           │
         ┌─────────────────────────────────┼─────────────────────────────────┐
         ▼                                 ▼                                 ▼
@@ -494,7 +494,7 @@
 
 <div class="footer">
   Reference diagram · regenerate from <code>docs/diagrams/architecture.html</code> ·
-  Code &amp; runbook: <code>github.com/nitesht2/second-brain-ai</code>
+  Code &amp; runbook: <code>github.com/<your-username>/second-brain-ai</code>
 </div>
 
 </body>

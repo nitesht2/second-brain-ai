@@ -6,7 +6,7 @@
 
 ## Domain
 
-Nitesh's working knowledge base. Topics span: AI tools & agents, data engineering
+Your working knowledge base. Topics span: AI tools & agents, data engineering
 & analytics (BigQuery, Alteryx, SQL, dbt), marketing & growth, content creation
 (Twitter/X, YouTube, TikTok), automation, Python/JS development, and algorithmic
 trading. The vault exists to compound what he learns into a queryable, interlinked
@@ -89,7 +89,7 @@ Body MUST follow:
 One clear statement, written to explain it to yourself in 12 months.
 
 ## Why It Matters
-Why it matters now; what it changes about how Nitesh works/thinks. MUST reference
+Why it matters now; what it changes about how you work/think. MUST reference
 a specific project, goal, or decision — no generic statements.
 
 ## Counter-arguments
