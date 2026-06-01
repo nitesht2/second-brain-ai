@@ -144,7 +144,7 @@ Three patterns differentiate this from a notes app:
 - **[Contradiction auto-resolve](docs/KNOWLEDGE_MODEL.md#2-contradiction-auto-resolve)** — when new info conflicts with old, the agent picks a winner, rewrites the page, moves loser content to `## Superseded`, and logs the change.
 - **[Decision Records (ADRs)](docs/KNOWLEDGE_MODEL.md#3-decision-records-adrs)** — when the agent helps you pick between alternatives, it writes a lightweight ADR to `wiki/decisions/` so future-you can answer "why did I build it this way?"
 
-Full schema and rationale: **[`docs/KNOWLEDGE_MODEL.md`](docs/KNOWLEDGE_MODEL.md)**
+Full schema and rationale: **[`docs/KNOWLEDGE_MODEL.md`](docs/KNOWLEDGE_MODEL.md)**. The bi-temporal facts and contradiction-resolve patterns are adapted from [eugeniughelbur/obsidian-second-brain](https://github.com/eugeniughelbur/obsidian-second-brain).
 
 ---
 
@@ -168,14 +168,6 @@ The LLM is the only knob. Swapping DeepSeek for Claude or GPT-4 multiplies that 
 - **Gateway lockdown** — `gateway.allow_all_users: false` + Discord ID allowlist. Only authorized users can drive the bot.
 
 Full details, rotation steps, and threat model: **[`docs/SECURITY.md`](docs/SECURITY.md)**
-
----
-
-## 📖 Inspiration
-
-- **[Karpathy's LLM-Wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** — the foundational pattern (three layers, agent-as-librarian, markdown as the database)
-- **[eugeniughelbur/obsidian-second-brain](https://github.com/eugeniughelbur/obsidian-second-brain)** — a Claude Code skill-pack take on the same idea; bi-temporal facts and contradiction-resolve patterns here are adapted from there
-- **[NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)** — the agent framework this project is built on
 
 ---
 
