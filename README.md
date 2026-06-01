@@ -150,16 +150,13 @@ Full schema and rationale: **[`docs/KNOWLEDGE_MODEL.md`](docs/KNOWLEDGE_MODEL.md
 
 ## 💰 Cost
 
-| Component | Light use | Heavier use (daily ingest + frequent queries) |
-|-----------|-----------|------------------------------------------------|
-| LLM (DeepSeek Flash, auto-cached) | < $1/mo | $2 – $5/mo |
-| VPS (small KVM, 2 vCPU / 8 GB) | $5 – $8/mo | $5 – $8/mo |
-| Residential proxy (only if ingesting video on VPS) | $0 (skip) | ~$5 one-time, 5 GB never-expires |
-| Discord bot | $0 | $0 |
-| X API (pay-as-you-go) | $0 | $1 – $3/mo |
-| **Total** | **~$8/mo** | **~$15/mo** |
+**~$8 – $15 / month** for a single-person setup:
 
-The LLM is the variable. Swapping DeepSeek for Claude or GPT-4 multiplies the LLM bill 5–10×.
+- **VPS** (small KVM, 2 vCPU / 8 GB): $5 – $8/mo
+- **LLM** (DeepSeek Flash, auto-cached): <$1 – $5/mo · the variable
+- **Optional:** residential proxy (~$5 one-time, never-expires), X API (~$1 – $3/mo if you query often)
+
+The LLM is the only knob. Swapping DeepSeek for Claude or GPT-4 multiplies that line 5–10×.
 
 ---
 
@@ -171,21 +168,6 @@ The LLM is the variable. Swapping DeepSeek for Claude or GPT-4 multiplies the LL
 - **Gateway lockdown** — `gateway.allow_all_users: false` + Discord ID allowlist. Only authorized users can drive the bot.
 
 Full details, rotation steps, and threat model: **[`docs/SECURITY.md`](docs/SECURITY.md)**
-
----
-
-## 📚 Documentation
-
-| Document | Covers |
-|----------|--------|
-| **[Architecture](docs/ARCHITECTURE.md)** | The four layers, agent loop, component responsibilities, services |
-| **[Knowledge model](docs/KNOWLEDGE_MODEL.md)** | Page schema, bi-temporal facts, contradiction resolve, ADRs, graphify bridge |
-| **[Security](docs/SECURITY.md)** | Secrets model, gateway lockdown, rotation, threat model |
-| **[Design notes](docs/DESIGN.md)** | What's intentionally not included (no vector DB, no bidirectional sync, no multi-user) and why |
-| **[Repository layout](docs/REPO_LAYOUT.md)** | Annotated file tree, reading order for new contributors |
-| **[VPS deployment runbook](deploy/vps/README.md)** | Full step-by-step server install |
-| **[Mac capture bridge](deploy/mac/README.md)** | Optional browser-clipper → VPS pipeline |
-| **[Architecture diagram](docs/diagrams/architecture.html)** | Single-file visual overview |
 
 ---
 
@@ -208,6 +190,10 @@ Issues and PRs welcome. Areas where outside contributions would be especially us
 - Tests
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+**More:** [Architecture](docs/ARCHITECTURE.md) · [Knowledge model](docs/KNOWLEDGE_MODEL.md) · [Security](docs/SECURITY.md) · [Design notes](docs/DESIGN.md) · [Repo layout](docs/REPO_LAYOUT.md) · [Deployment runbook](deploy/vps/README.md) · [Diagram](docs/diagrams/architecture.html)
 
 ---
 
