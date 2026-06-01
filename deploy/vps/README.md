@@ -3,7 +3,7 @@
 Runbook for the always-on, agentic Second Brain on a Linux VPS. Hermes'
 `secondbrain-agent` (with the `llm-wiki` skill) is the worker: it ingests
 `raw/` files into the wiki and answers queries — no `auto_ingest.py` on the
-agentic path. Verified on Hostinger KVM 2 (2 vCPU, 8 GB, Ubuntu 24.04) with
+agentic path. Verified on a small KVM VPS (2 vCPU, 8 GB, Ubuntu 24.04) with
 Hermes Agent v0.14.0 already installed.
 
 Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
@@ -53,7 +53,7 @@ Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
 7. **Verify** — drop a file in `raw/`; within ~60 s a wiki page appears and the
    raw file moves to `raw/processed/`.
 
-## Discord query layer (DONE — "Chanakya" bot, live & verified)
+## Discord query layer (the bot)
 
 Two-way plain-English chat from phone/desktop, powered by Hermes + DeepSeek flash.
 Per-profile gateway runs as a systemd **user** service (linger enabled → survives logout).
@@ -114,7 +114,7 @@ systemctl --user restart hermes-gateway-<your-profile>
 ## Mac-free clipping via residential proxy
 
 Datacenter IPs (your VPS) are blocked by YouTube/TikTok for scraping. A residential
-proxy makes yt-dlp look like a home connection. Any provider works (DataImpulse
+proxy makes yt-dlp look like a home connection. Any provider works (e.g. DataImpulse
 ~$1/GB, IPRoyal, etc.) — all give an `http://user:pass@host:port` string.
 
 1. Buy a small residential (NOT datacenter) plan, get the endpoint string.
