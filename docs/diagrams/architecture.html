@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Second Brain — Architecture</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c2128;
+    --line: #30363d;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #56d364;
+    --purple: #bc8cff;
+    --orange: #ffa657;
+    --pink: #ff7b72;
+    --yellow: #e3b341;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 13px; }
+  .legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    margin-bottom: 24px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .legend span::before {
+    content: "■ ";
+    margin-right: 4px;
+  }
+  .lg-mac::before     { color: var(--accent); }
+  .lg-vps::before     { color: var(--green); }
+  .lg-agent::before   { color: var(--purple); }
+  .lg-ext::before     { color: var(--orange); }
+  .lg-user::before    { color: var(--pink); }
+  .lg-data::before    { color: var(--yellow); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .col-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .node {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .node .title {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .node .meta {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .node code {
+    background: var(--panel-2);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .node ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .node li { margin: 2px 0; }
+  .border-mac    { border-left: 3px solid var(--accent); }
+  .border-vps    { border-left: 3px solid var(--green); }
+  .border-agent  { border-left: 3px solid var(--purple); }
+  .border-ext    { border-left: 3px solid var(--orange); }
+  .border-user   { border-left: 3px solid var(--pink); }
+  .border-data   { border-left: 3px solid var(--yellow); }
+  .arrow {
+    text-align: center;
+    color: var(--muted);
+    font-size: 18px;
+    margin: 4px 0;
+    line-height: 1;
+  }
+  .arrow.h { font-size: 22px; }
+  .small-hr {
+    border: none;
+    border-top: 1px dashed var(--line);
+    margin: 16px 0;
+  }
+  .footer {
+    margin-top: 32px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+  .pillar {
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+  }
+  .pillar > .pillar-title {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+  }
+  .flow {
+    background: var(--panel-2);
+    border: 1px dashed var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 20px;
+    font-family: "SF Mono", Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--muted);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .flow .hi { color: var(--accent); }
+  .flow .hg { color: var(--green); }
+  .flow .hp { color: var(--purple); }
+  .flow .ho { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<h1>Second Brain — Architecture</h1>
+<div class="subtitle">Always-on agentic knowledge base on Hostinger VPS, queryable from Discord. Mac = capture; VPS = brain.</div>
+
+<div class="legend">
+  <span class="lg-user">User / Devices</span>
+  <span class="lg-mac">Mac (capture)</span>
+  <span class="lg-vps">VPS infra</span>
+  <span class="lg-agent">Agent + skills</span>
+  <span class="lg-ext">External services</span>
+  <span class="lg-data">Data / Vault</span>
+</div>
+
+<!-- =============================================== -->
+<!-- ROW 1: SOURCES → CAPTURE                         -->
+<!-- =============================================== -->
+<div class="pillar">
+  <div class="pillar-title">1 · Capture (how things enter the brain)</div>
+  <div class="grid">
+
+    <!-- User / Devices -->
+    <div>
+      <div class="col-title">User</div>
+      <div class="node border-user">
+        <div class="title">📱 iPhone</div>
+        <div class="meta">Discord app → DM Chanakya</div>
+      </div>
+      <div class="node border-user">
+        <div class="title">💻 MacBook (M4)</div>
+        <div class="meta">Obsidian Web Clipper · Discord · Browser</div>
+      </div>
+    </div>
+
+    <!-- Capture paths -->
+    <div>
+      <div class="col-title">Capture paths</div>
+      <div class="node border-mac">
+        <div class="title">Obsidian Web Clipper (Chrome)</div>
+        <div class="meta">One-click clip → <code>~/SecondBrain/raw/</code></div>
+        <ul>
+          <li>Vault: <code>SecondBrain</code>, folder: <code>raw</code></li>
+          <li>Obsidian app set to launch-at-login (background)</li>
+        </ul>
+      </div>
+      <div class="node border-mac">
+        <div class="title">mac_push_watcher.sh</div>
+        <div class="meta"><code>fswatch ~/SecondBrain/raw</code> → <code>scp → VPS</code></div>
+        <ul>
+          <li>launchd: <code>com.secondbrain.macpush</code> (KeepAlive, RunAtLoad)</li>
+          <li>Log: <code>~/SecondBrain/outputs/mac-push.log</code></li>
+        </ul>
+      </div>
+      <div class="node border-agent">
+        <div class="title">Paste URL → Chanakya (Discord)</div>
+        <div class="meta">Bypasses Mac. Article / video / tweet link.</div>
+      </div>
+    </div>
+
+    <!-- Sources -->
+    <div>
+      <div class="col-title">External sources</div>
+      <div class="node border-ext">
+        <div class="title">Articles / blogs / docs / PDF</div>
+        <div class="meta">Any URL — <code>web_extract</code> handles it</div>
+      </div>
+      <div class="node border-ext">
+        <div class="title">Video (YouTube · TikTok · IG · podcasts)</div>
+        <div class="meta">via DataImpulse residential proxy</div>
+        <ul>
+          <li>YouTube → captions first (fast, exact)</li>
+          <li>else yt-dlp audio → faster-whisper CPU</li>
+        </ul>
+      </div>
+      <div class="node border-ext">
+        <div class="title">X / Twitter</div>
+        <div class="meta">3 auth modes via <code>xurl</code></div>
+        <ul>
+          <li>bearer → public search/read</li>
+          <li>OAuth1 → whoami/timeline/likes</li>
+          <li>OAuth2 → bookmarks</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- arrow -->
+<div class="arrow">▼</div>
+
+<!-- =============================================== -->
+<!-- ROW 2: VPS PIPELINE                              -->
+<!-- =============================================== -->
+<div class="pillar">
+  <div class="pillar-title">2 · VPS pipeline (24/7, Mac can be off)</div>
+  <div class="grid">
+
+    <!-- Inbound + Watcher -->
+    <div>
+      <div class="col-title">Inbound</div>
+      <div class="node border-vps">
+        <div class="title"><code>/root/SecondBrain/raw/</code></div>
+        <div class="meta">Files land here from all sources</div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="node border-vps">
+        <div class="title">secondbrain-watcher.service</div>
+        <div class="meta"><code>inotifywait</code> on raw/ → kanban task</div>
+        <ul>
+          <li>Script: <code>sb_watcher.sh</code></li>
+          <li>systemd-managed (Restart=always)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Dispatcher + Agent -->
+    <div>
+      <div class="col-title">Orchestration</div>
+      <div class="node border-vps">
+        <div class="title">Kanban board: <code>secondbrain</code></div>
+        <div class="meta">SQLite, board-scoped, ingest tasks</div>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="node border-agent">
+        <div class="title">🧠 secondbrain-agent (Chanakya)</div>
+        <div class="meta">Hermes Agent v0.14 · DeepSeek V4 Flash</div>
+        <ul>
+          <li>Skill: <code>llm-wiki</code> (orient → check → write)</li>
+          <li>MCP: <code>obsidian-graph</code> (read tools)</li>
+          <li>Auto prompt-caching (server-side)</li>
+        </ul>
+      </div>
+      <div class="arrow">▼</div>
+      <div class="node border-vps">
+        <div class="title">Hermes Gateway (Discord)</div>
+        <div class="meta"><code>hermes-gateway-secondbrain-agent.service</code></div>
+        <ul>
+          <li>Bot: <strong>Chanakya</strong> (#second-brain)</li>
+          <li><code>allow_all_users: false</code> + allowlist</li>
+          <li>Embedded dispatcher (replaces standalone)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Tools agent calls -->
+    <div>
+      <div class="col-title">Agent tools (auto-picked)</div>
+      <div class="node border-agent">
+        <div class="title">📰 <code>web_extract</code></div>
+        <div class="meta">URL → clean markdown (built-in)</div>
+      </div>
+      <div class="node border-agent">
+        <div class="title">🎬 <code>clip.py</code> (via proxy)</div>
+        <div class="meta">yt-dlp + youtube-transcript-api + whisper</div>
+      </div>
+      <div class="node border-agent">
+        <div class="title">🐦 <code>xurl</code></div>
+        <div class="meta">X API CLI (search · read · bookmarks)</div>
+      </div>
+      <div class="node border-agent">
+        <div class="title">🔎 <code>duckduckgo-search</code> + <code>scrapling</code></div>
+        <div class="meta">Free web search + stealth scrape</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- arrow -->
+<div class="arrow">▼</div>
+
+<!-- =============================================== -->
+<!-- ROW 3: VAULT + QUERY                             -->
+<!-- =============================================== -->
+<div class="pillar">
+  <div class="pillar-title">3 · Vault (source of truth) + Query</div>
+  <div class="grid">
+
+    <!-- Vault structure -->
+    <div>
+      <div class="col-title">/root/SecondBrain/wiki/</div>
+      <div class="node border-data">
+        <div class="title">wiki/ (the brain)</div>
+        <ul>
+          <li><code>SCHEMA.md</code> — agent rules</li>
+          <li><code>index.md</code> · <code>log.md</code></li>
+          <li><code>entities/</code> — people · tools · models</li>
+          <li><code>concepts/</code> — ideas · frameworks</li>
+          <li><code>sources/</code> — per-ingest summary</li>
+          <li><code>synthesis/</code> — cross-topic patterns</li>
+          <li><code>decisions/</code> — ADRs</li>
+          <li><code>episodic/</code> · <code>projects/</code></li>
+        </ul>
+      </div>
+      <div class="node border-data">
+        <div class="title">raw/ (immutable)</div>
+        <div class="meta"><code>processed/</code> · <code>generated/</code></div>
+      </div>
+    </div>
+
+    <!-- Knowledge model -->
+    <div>
+      <div class="col-title">Knowledge model (in SCHEMA.md + SOUL.md)</div>
+      <div class="node border-agent">
+        <div class="title">Bi-temporal facts</div>
+        <div class="meta"><code>valid_from</code> · <code>learned_on</code> · <code>last_verified</code></div>
+        <ul>
+          <li>"What did I know and when" queries</li>
+          <li>last_verified &gt; 180d → re-check on next mention</li>
+        </ul>
+      </div>
+      <div class="node border-agent">
+        <div class="title">Contradiction auto-resolve</div>
+        <div class="meta">Agent rewrites + moves loser to <code>## Superseded</code> + logs</div>
+        <ul>
+          <li>Truly ambiguous → <code>contradicts:</code> cross-link</li>
+        </ul>
+      </div>
+      <div class="node border-agent">
+        <div class="title">ADRs in <code>decisions/</code></div>
+        <div class="meta">Auto-written when picking A vs B</div>
+      </div>
+      <div class="node border-agent">
+        <div class="title">Graphify bridge</div>
+        <div class="meta">Code Qs → read <code>graphify-out/GRAPH_REPORT.md</code> first</div>
+      </div>
+    </div>
+
+    <!-- Query + read -->
+    <div>
+      <div class="col-title">Query / Read</div>
+      <div class="node border-user">
+        <div class="title">💬 Discord query (primary)</div>
+        <div class="meta">"what about Meta ads?" → wiki → answer</div>
+        <ul>
+          <li>Two-way, plain English, mention-free</li>
+          <li>Searches via obsidian-graph MCP</li>
+        </ul>
+      </div>
+      <div class="node border-mac">
+        <div class="title">Obsidian (Mac, optional)</div>
+        <div class="meta">Visual graph view · backlinks</div>
+        <ul>
+          <li>Reads Mac copy of vault</li>
+          <li>Mac vault drifts unless re-synced</li>
+        </ul>
+      </div>
+      <div class="node border-vps">
+        <div class="title">Daily heartbeat</div>
+        <div class="meta"><code>secondbrain-heartbeat.timer</code> · 04:07 UTC</div>
+        <ul>
+          <li>Sweep stragglers in raw/</li>
+          <li>Lint: orphans · broken links · stale facts</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- =============================================== -->
+<!-- INFRA + SECURITY                                 -->
+<!-- =============================================== -->
+<hr class="small-hr">
+<div class="pillar">
+  <div class="pillar-title">4 · Infra & security</div>
+  <div class="grid">
+    <div>
+      <div class="col-title">VPS (Hostinger KVM 2)</div>
+      <div class="node border-vps">
+        <div class="title">Ubuntu 24.04 · 2 vCPU · 8 GB RAM · 100 GB</div>
+        <div class="meta">+ 4 GB swap (OOM insurance)</div>
+        <ul>
+          <li>Co-tenants: Temporal · Postiz · quadstar-deals</li>
+          <li>Free RAM headroom for brain: ~3.4 GB</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="col-title">External services</div>
+      <div class="node border-ext">
+        <div class="title">DataImpulse residential proxy</div>
+        <div class="meta">$1/GB · never-expires · <code>BRAIN_PROXY</code> env</div>
+      </div>
+      <div class="node border-ext">
+        <div class="title">DeepSeek V4 Flash (direct API)</div>
+        <div class="meta">Project-scoped key in profile <code>.env</code></div>
+      </div>
+      <div class="node border-ext">
+        <div class="title">X Developer API · Discord Bot</div>
+        <div class="meta">Pay-as-you-go · Chanakya bot</div>
+      </div>
+    </div>
+    <div>
+      <div class="col-title">Security boundary</div>
+      <div class="node border-vps">
+        <div class="title">Code → GitHub (public)</div>
+        <div class="meta">Scanned · placeholders only · <code>.gitignore</code> hardened</div>
+      </div>
+      <div class="node border-vps">
+        <div class="title">Secrets → VPS .env (chmod 600)</div>
+        <div class="meta">Per-profile · never propagates · never in git</div>
+      </div>
+      <div class="node border-vps">
+        <div class="title">Gateway lockdown</div>
+        <div class="meta"><code>allow_all_users: false</code> + Discord ID allowlist</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================== -->
+<!-- FLOWS                                            -->
+<!-- =============================================== -->
+<div class="flow">
+<span class="hi">CAPTURE FLOWS</span>
+
+  iPhone Discord  ──► <span class="hp">Chanakya gateway</span>  ──► auto-detect URL type
+                                          │
+        ┌─────────────────────────────────┼─────────────────────────────────┐
+        ▼                                 ▼                                 ▼
+  <span class="ho">web_extract</span>                       <span class="ho">clip.py via proxy</span>                  <span class="ho">xurl</span>
+  (article/PDF)                     (video — captions/whisper)           (tweet/thread)
+        │                                 │                                 │
+        └─────────────────────────────────┴─────────────────────────────────┘
+                                          ▼
+                              raw/ on VPS  ──►  watcher  ──►  kanban  ──►  <span class="hp">agent ingests</span>
+                                                                                │
+  Chrome ──► Obsidian Clipper ──► <span class="hi">Mac raw/</span> ──► mac watcher ──► scp ──┘
+
+<span class="hg">QUERY FLOW</span>
+
+  Discord message  ──►  gateway  ──►  agent
+                                       │  read SCHEMA + index + log (orient)
+                                       │  obsidian-graph MCP: search · backlinks · neighbors
+                                       │  reason · synthesize · cite pages
+                                       ▼
+                                  reply in channel
+</div>
+
+<div class="footer">
+  Reference diagram · regenerate from <code>docs/diagrams/architecture.html</code> ·
+  Code &amp; runbook: <code>github.com/nitesht2/second-brain-ai</code>
+</div>
+
+</body>
+</html>
