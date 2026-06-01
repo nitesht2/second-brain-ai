@@ -27,7 +27,8 @@ wiki/                      <- WIKI_PATH
 ├── sources/              <- one summary per ingested source
 ├── synthesis/            <- cross-topic patterns ("Synthesis - <Theme>.md")
 ├── episodic/             <- agent session records
-└── projects/             <- synced from project docs
+├── projects/             <- synced from project docs
+└── decisions/            <- ADRs (one file per non-trivial trade-off)
 
 ../raw/                    <- SIBLING of wiki/, immutable sources
 ├── *.md *.txt *.pdf       <- drop zone
@@ -111,10 +112,55 @@ tags: [...]
 ---
 ```
 
+### decisions/ — Decision Records (ADRs)
+
+Lightweight ADRs for non-trivial trade-offs (tool/architecture/strategy choices).
+Captures the reasoning so future-you can answer "why did I build it this way."
+Source material for content: every ADR becomes a tweet/post.
+
+```yaml
+---
+title: "Decision: <noun-phrase> over <alternative>"
+status: accepted | superseded | reversed
+decided_on: YYYY-MM-DD
+valid_from: YYYY-MM-DD
+last_verified: YYYY-MM-DD
+project: <what this affects>
+tags: [decisions, <domain>]
+superseded_by: [[Newer Decision]]  # OPTIONAL
+---
+```
+Body:
+```
+# Decision: <X over Y>
+
+## Context
+What forced the call. The problem in 2-3 sentences.
+
+## Options Considered
+- **Option A** — pros / cons
+- **Option B** — pros / cons
+- **Option C** — pros / cons
+
+## Choice
+[[Option A]]. Because [the one or two reasons that actually decided it].
+
+## Trade-offs / Consequences
+What this costs. What breaks if the reasoning changes.
+
+## Revisit when
+A concrete trigger (e.g. "if monthly cost > $20", "if VPS RAM > 16GB",
+"if vendor X drops below $1/GB"). When that fires, re-open the ADR.
+```
+
+When to create one: any decision with 2+ real alternatives where the reasoning
+matters in 6 months. NOT for trivial choices ("which folder name") — those
+don't need a record. Aim ~150 words. If you can't fill "Revisit when," skip it.
+
 ## Tag Taxonomy (add new tags here before using)
 
 ai, ai-agents, llm, automation, data-engineering, analytics, bigquery, sql,
-marketing, growth, content, twitter, youtube, tiktok, python, javascript,
+decisions, marketing, growth, content, twitter, youtube, tiktok, python, javascript,
 trading, productivity, business, tooling, prompt-engineering.
 
 ## Page Thresholds
