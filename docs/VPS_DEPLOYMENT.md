@@ -8,12 +8,12 @@ Core motivation: **query the brain any time + keep it always up to date.**
 Hermes is the centerpiece — the always-on agent you message (Discord) that reads
 the vault and answers. The ingest pipeline keeps its memory fresh.
 
-Move the always-on engine from the Mac to the Hostinger VPS:
+Move the always-on engine from the Mac to the Linux VPS:
 
 - Second Brain ingest/digest/weekly pipeline runs on the VPS (systemd timers) —
   keeps the vault fresh 24/7.
 - Hermes Agent runs as a full multi-agent server on the VPS (secondbrain +
-  finance-major + infrastructure + quadstar boards), dispatching kanban tasks.
+  optional additional project boards), dispatching kanban tasks.
 - Hermes Discord gateway = the query layer. Message the bot from iPhone or Mac,
   secondbrain-agent reads the vault (via obsidian_mcp.py + llm-wiki skill) and
   answers. iOS uses the Discord app — no Obsidian-mobile-sync needed for Q&A.
@@ -47,13 +47,13 @@ Missing piece is only the running gateway (config `platforms: {}` today).
 | Scheduler | systemd timers |
 | Read layer | Syncthing -> Mac Obsidian |
 | Transcription | CPU whisper on VPS |
-| Hermes scope | Full multi-agent server (secondbrain + finance + infra + quadstar) |
+| Hermes scope | Full multi-agent server (secondbrain (+ optional additional boards)) |
 | Kanban state | Independent VPS instance (recommended; no SQLite sync) |
 | Query layer | Hermes Discord gateway (iPhone + Mac); Obsidian = visual bonus |
 | Devices | iPhone (Discord app for Q&A) + MacBook (Obsidian + Discord) |
 | **Ingest worker** | **FULLY AGENTIC — Hermes secondbrain-agent + llm-wiki skill.** Retire auto_ingest.py as the active worker (keep in repo as fallback/reference). |
 | Sync | Syncthing (free). Mac reads vault; iPhone queries via Discord (no iOS Obsidian sync needed). |
-| VPS specs | Hostinger KVM 2: 2 vCPU, 8 GB RAM, 100 GB, Ubuntu 24.04 (~3.4 GB already used) |
+| VPS specs | small KVM VPS: 2 vCPU, 8 GB RAM, 100 GB, Ubuntu 24.04 (~3.4 GB already used) |
 
 ## Fully-agentic ingest (the model shift)
 
@@ -90,12 +90,12 @@ bot once, approve your own pairing, done. HARD GATE before gateway goes public.
    the full agent fleet fits. THIS IS THE GATING UNKNOWN.
 2. **Access** — SSH access for live setup, or generate scripts you run yourself.
 3. **Provider keys for VPS** — OpenRouter (have it) + DeepSeek + any per-board
-   integrations you want live on the VPS (Discord channels, Postiz). Some can be
+   integrations you want live on the VPS (Discord channels). Some can be
    omitted on the VPS to keep it lean.
 
 ## RAM budget risk (READ THIS FIRST)
 
-The Mac rule is <20 GB across local processes. A Hostinger VPS is smaller
+The Mac rule is <20 GB across local processes. A Linux VPS is smaller
 (commonly 4-8 GB). The full plan stacks:
 
 - Hermes dispatcher + N agent profiles (each agent run loads a model client;
@@ -120,7 +120,7 @@ Audit result: the codebase is already Linux-portable.
   -> openai-whisper(CPU). Linux uses faster-whisper CPU.
 - Added `requirements-vps.txt` (faster-whisper + playwright) so the VPS CPU
   transcription path is reproducible; base requirements.txt stays lean.
-- OPEN per-board decision: which integrations (Postiz, Discord channels) run on
+- OPEN per-board decision: which integrations (your per-project integrations) run on
   the VPS vs stay Mac-only — defer to Phase 2 config scoping.
 
 ### Phase 1 — Base VPS + vault + feed fetcher (NOT the ingest worker)
@@ -147,11 +147,11 @@ curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scri
   746 MB state.db). Docker is an alternative — repo ships `Dockerfile` +
   `docker-compose.yml`; containerizing gives clean isolation + easy teardown,
   worth considering for the VPS.
-- Bring over ONLY: agent profiles (secondbrain/finance/infra/quadstar),
+- Bring over ONLY: the secondbrain-agent profile (and any other project profiles you maintain),
   scoped `config.yaml` (with allow_all_users already false), `SOUL.md`, `.env`
   (only the keys those boards need — incl DISCORD_BOT_TOKEN / DISCORD_WIKI_*).
 - **Repoint** `secondbrain-agent` `obsidian-graph` MCP from
-  `/Users/nitesh/SecondBrain/obsidian_mcp.py` to the VPS vault path.
+  `<your-mac-vault-path>/obsidian_mcp.py` to the VPS vault path.
 - Fresh `kanban.db`; init the four boards.
 - Daemonize:
   - `hermes gateway run` (or `hermes gateway install` as a service) — Discord
@@ -193,9 +193,9 @@ CPU whisper still need real headroom — see RAM budget risk above.
   authenticated reverse proxy. No open ports for agent control surfaces.
 - Rotate any key that has ever been pasted into a chat/transcript.
 
-## Open questions for Nitesh
+## Open questions for the operator
 1. VPS RAM / vCPU / OS?
 2. SSH-access setup vs generate-scripts-you-run?
 3. Which boards truly need to be always-on on day one vs added in a later phase?
-4. Do finance/infra/quadstar agents need their Discord/Postiz integrations live
+4. Do any optional project agents need their integrations live
    on the VPS, or run those Mac-side for now?
