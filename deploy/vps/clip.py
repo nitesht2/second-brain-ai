@@ -44,8 +44,11 @@ def main():
     if vid:
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
-            kw = {'proxies': {'http': PROXY, 'https': PROXY}} if PROXY else {}
-            rows = YouTubeTranscriptApi().fetch(vid)
+            api = YouTubeTranscriptApi()
+            if PROXY:
+                from youtube_transcript_api.proxies import GenericProxyConfig
+                api = YouTubeTranscriptApi(proxy_config=GenericProxyConfig(http_url=PROXY, https_url=PROXY))
+            rows = api.fetch(vid)
             text = ' '.join(r.text for r in rows).strip()
             if text: write(f'YouTube {vid}', url, 'YouTube', text); return 0
         except Exception as e:
