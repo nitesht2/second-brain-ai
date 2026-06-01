@@ -2,267 +2,257 @@
 
 # 🧠 Second Brain AI
 
-### AI agents that write, maintain, and compound your knowledge base on autopilot.
+### An always-on agent that reads your articles, videos, and tweets, files them into a connected Obsidian wiki, and lets you query the result in plain English from your phone.
 
-**Drop files in. Wake up to a connected knowledge graph in Obsidian. $0.04/month.**
+**Paste a link to your Discord bot. Wake up to a cross-linked knowledge graph. Mac stays off.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![macOS](https://img.shields.io/badge/Platform-macOS-lightgrey)](#)
-[![DeepSeek](https://img.shields.io/badge/AI-DeepSeek%20Flash-blue)](https://deepseek.com)
+[![Linux VPS](https://img.shields.io/badge/Runs%20on-Linux%20VPS-green)](#)
+[![Hermes](https://img.shields.io/badge/Agent-Hermes-purple)](https://github.com/NousResearch/hermes-agent)
+[![DeepSeek](https://img.shields.io/badge/LLM-DeepSeek%20Flash-blue)](https://deepseek.com)
 [![Obsidian](https://img.shields.io/badge/Viewer-Obsidian-purple)](https://obsidian.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Quick Start](#-quick-start) • [Architecture](#-architecture) • [How It Works](#-how-it-works) • [Cost](#-cost) • [Reference](#-inspiration)
+[Why](#why-this-exists) · [Architecture](docs/diagrams/architecture.html) · [Quick start](#-quick-start) · [Capture paths](#-capture-paths) · [Knowledge model](#-knowledge-model) · [Cost](#-cost)
 
 </div>
 
 ---
 
-## Why This Exists
+## Why this exists
 
-Most knowledge tools are write-heavy. You read articles, save bookmarks, organize folders. The knowledge sits there. It never connects to what you learned yesterday.
+Bookmarks decay. Notes apps fill up with orphans. Most "second brain" systems are write-heavy: you save things, the knowledge never connects to what you saved last month.
 
-This flips it: **AI agents write and maintain a persistent Obsidian wiki.** Every file you drop gets ingested. Every agent run gets captured. Every project doc stays synced. The wiki compounds with every cycle. You just read.
+This flips it: an **agent** maintains your wiki for you. You feed it links from anywhere (Discord, a Chrome clipper, drop-in folders). It reads the source, extracts entities and concepts, cross-links them into what already exists, resolves contradictions, and logs the changes. You read the result in Obsidian, or query it in plain English from your phone via Discord.
 
-Inspired by [Andrej Karpathy's llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) concept and extended with full automation, multi-agent orchestration, and $0.04/month pricing.
+Inspired by [Andrej Karpathy's llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — extended with always-on hosting, multi-source capture, an agent that resolves contradictions instead of flagging them, and an ambient query layer via Discord.
 
 ---
 
-## 🚀 Quick Start
+## 📐 Architecture
+
+Three layers, plus a query layer:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CAPTURE      (multiple paths into raw/)                         │
+│   • Discord  → paste any URL to the bot                          │
+│   • Browser  → Obsidian Web Clipper → local watcher → VPS        │
+│   • Files    → drop .md / .pdf / .txt into raw/                  │
+│   • Video    → yt-dlp + faster-whisper (proxy for IP blocks)     │
+│   • Tweets   → xurl (search · read · bookmarks)                  │
+├─────────────────────────────────────────────────────────────────┤
+│  PIPELINE    (24/7 on the VPS)                                   │
+│   inotify watcher → kanban task → agent dispatch → ingest        │
+├─────────────────────────────────────────────────────────────────┤
+│  AGENT       (the brain)                                         │
+│   Hermes Agent + LLM (DeepSeek Flash by default)                 │
+│   + llm-wiki skill + obsidian-graph MCP + web search             │
+├─────────────────────────────────────────────────────────────────┤
+│  VAULT       (markdown — source of truth)                        │
+│   wiki/entities · concepts · sources · synthesis · decisions     │
+├─────────────────────────────────────────────────────────────────┤
+│  QUERY       (anywhere)                                          │
+│   Discord (any device) · Obsidian (graph view, optional)         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Full diagram: [`docs/diagrams/architecture.html`](docs/diagrams/architecture.html) (single-file, opens in any browser).
+
+**Tech split:**
+- **Agent runtime:** [Hermes Agent](https://github.com/NousResearch/hermes-agent) (handles the agent loop, profile isolation, gateway, kanban, MCP)
+- **Reasoning:** any LLM Hermes supports — DeepSeek Flash is the default here for cheap auto-prompt-caching; swappable to Claude / OpenRouter / local Ollama via one config change
+- **Knowledge skill:** `llm-wiki` (ships with Hermes) — orient → check existing → cross-link → resolve contradictions → log
+- **Vault tools:** custom `obsidian_mcp.py` exposes graph reads (backlinks · outlinks · search · find-path · hubs)
+
+---
+
+## 🚀 Quick start
+
+**Prereqs:**
+- A Linux VPS (Ubuntu 22.04+, 4 GB RAM minimum, 8 GB recommended)
+- A Discord bot token + a server where you can invite it
+- An LLM API key (DeepSeek / OpenRouter / Anthropic — pick one)
+- Optional: residential proxy if you want to ingest videos directly from the VPS (YouTube/TikTok block datacenter IPs)
+
+**On the VPS:**
 
 ```bash
-git clone https://github.com/nitesht2/second-brain-ai.git
-cd second-brain-ai
-./setup.sh
+# 1. Install Hermes
+curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+
+# 2. Clone this repo into the vault root
+git clone https://github.com/<you>/second-brain-ai.git /root/SecondBrain
+cd /root/SecondBrain
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-vps.txt
+
+# 3. Follow the full setup runbook
+cat deploy/vps/README.md
 ```
 
-That's it. The setup script:
+The runbook ([`deploy/vps/README.md`](deploy/vps/README.md)) covers:
+- swap + permissions baseline
+- gateway lockdown (`allow_all_users: false` + Discord ID allowlist)
+- importing/creating the `secondbrain-agent` profile
+- wiring the obsidian MCP into the profile's home
+- installing the systemd services (watcher · dispatch · heartbeat)
+- xurl auth (bearer + OAuth1 + OAuth2 for full X coverage)
+- proxy setup (optional)
 
-1. Creates the vault at `~/SecondBrain/`
-2. Installs Python dependencies
-3. Sets up 3 launchd services (ingest, file watcher, daily digest)
-4. Copies the file watcher and daily digest scripts
+**On the Mac** (only if you want one-click browser clipping):
 
-**Prerequisites:** macOS, Python 3, [Obsidian](https://obsidian.md) (free, download it), Homebrew
+```bash
+brew install fswatch
+cp deploy/mac/com.secondbrain.macpush.plist ~/Library/LaunchAgents/
+# edit the plist + watcher to point at your VPS, then:
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.secondbrain.macpush.plist
+```
 
-**After setup:**
-1. Open Obsidian → Open folder as vault → select `~/SecondBrain`
-2. Drop a markdown file into `~/SecondBrain/raw/`
-3. The file watcher picks it up and triggers ingestion
-4. Browse `wiki/` in Obsidian to see your knowledge graph
-
-### Manual clipping (browser)
-
-Not everything comes from automated feeds. For articles, threads, and videos you find while browsing, two options:
-
-**Obsidian Web Clipper** — browser extension (Chrome, Firefox, Safari). One click saves any article as markdown directly into your vault. Set the vault path to `~/SecondBrain` and the save folder to `raw/`. The file watcher picks it up and it gets ingested on the next cycle. [Install from obsidian.md/clipper](https://obsidian.md/clipper)
+Set the Obsidian Web Clipper to save into your local vault's `raw/` folder. The watcher pushes new files to the VPS automatically.
 
 ---
 
-## 🏗 Architecture
+## 📥 Capture paths
 
-```
-                    ┌─────────────────────────────────────┐
-                    │       HERMES AGENT (orchestrator)    │
-                    │       Kanban dispatch + cron         │
-                    └──────────────┬──────────────────────┘
-                                   │
-       ┌───────────────────────────┼───────────────────────────┐
-       │                           │                           │
-       ▼                           ▼                           ▼
-┌──────────────┐          ┌──────────────┐          ┌──────────────┐
-│ 5 Agent      │          │ File Watcher │          │ Cron Jobs    │
-│ Profiles     │          │ (fswatch)    │          │ (launchd)    │
-│ DeepSeek     │          │ monitors     │          │ 4 services   │
-│ Flash        │          │ raw/ dir     │          │ auto-start   │
-└──────┬───────┘          └──────┬───────┘          └──────┬───────┘
-       │                         │                         │
-       └─────────────────────────┼─────────────────────────┘
-                                 │
-                                 ▼
-                    ┌────────────────────────┐
-                    │    Knowledge Pipeline    │
-                    │    Every 6 Hours         │
-                    └───────────┬────────────┘
-                                │
-       ┌────────────────────────┼────────────────────────┐
-       │                        │                        │
-       ▼                        ▼                        ▼
-┌──────────────┐       ┌──────────────┐       ┌──────────────┐
-│ DISTILL      │       │ INGEST       │       │ SCAN         │
-│ episodic/    │       │ raw/         │       │ AGENTS.md    │
-│ session logs │       │ markdown     │       │ README.md    │
-│ → concepts   │       │ PDF, text    │       │ → wiki       │
-└──────┬───────┘       └──────┬───────┘       └──────┬───────┘
-       │                      │                      │
-       └──────────────────────┼──────────────────────┘
-                              │
-                              ▼
-                    ┌────────────────────────┐
-                    │     OBSIDIAN VAULT       │
-                    │     ~/SecondBrain/wiki/   │
-                    │                          │
-                    │  concepts/    synthesis/  │
-                    │  entities/    episodic/   │
-                    │  sources/     index.md    │
-                    └───────────────────────────┘
-```
+You don't need all of these — pick the ones that fit how you work.
 
-Three layers, exactly as Karpathy described: Raw Sources → LLM-Maintained Wiki → Schema (AGENTS.md). Extended with full automation.
+| Source | Path | Notes |
+|--------|------|-------|
+| **Any link** (article, blog, docs, gist, PDF) | DM to the Discord bot | Agent uses `web_extract`. Works from phone or desktop. |
+| **Local files** (`.md`, `.txt`, `.pdf`) | Drop into VPS `raw/` directly | Useful for batch backfills. |
+| **Browser one-click** | Obsidian Web Clipper → local `raw/` → fswatch → VPS | Best for "I'm in flow, don't switch apps." Mac watcher in `deploy/mac/`. |
+| **Video** (YouTube · TikTok · IG · podcasts · 1000+ sites) | Paste link to bot, or run `scripts/clip.py <url>` | yt-dlp + faster-whisper. YouTube uses captions first, falls back to whisper. |
+| **X / Twitter** | Ask the bot ("search X for …", "save this thread", "show my bookmarks") | `xurl` CLI under the hood. Three auth modes covered: bearer (search), OAuth1 (timeline), OAuth2 (bookmarks). |
+
+`raw/` is the single drop zone. Whatever lands there gets picked up by the watcher → queued as a kanban task → ingested by the agent → moved to `raw/processed/`.
 
 ---
 
-## 📂 How It Works
+## 🧠 Knowledge model
 
-### Phase 1: Distillation
+The agent writes structured markdown. Every concept/entity page carries:
 
-Every pipeline in the setup writes a session record after finishing. The heartbeat reads them and extracts new concepts, entities, and patterns. The system learns from its own output.
+```yaml
+---
+confidence: high | medium | low
+explored: false
+valid_from: YYYY-MM-DD       # when the claim became true in the world
+learned_on: YYYY-MM-DD       # when this vault first recorded it
+last_verified: YYYY-MM-DD    # last time a re-ingest confirmed it
+superseded_by: [[New Page]]  # optional
+contradicts: [[Other Page]]  # optional
+---
+```
 
-### Phase 2: Ingestion
+Two patterns make this more than a notes app:
 
-Drop files into `raw/`. The file watcher (fswatch) detects them instantly and triggers ingestion. The agent reads each file through an LLM, extracts entities and concepts, writes structured wiki entries with Obsidian `[[wikilinks]]`, and updates `index.md`. Processed within minutes.
+- **Bi-temporal facts:** track *when something was true* separately from *when you learned it*. A 2024 fact ingested in 2026 has `valid_from: 2024`, `learned_on: 2026`. Enables "what did I know and when" queries, and surfaces drift (`last_verified > 180d → re-check`).
+- **Contradiction auto-resolve:** when a new source disagrees with an existing page, the agent compares `valid_from` + source weight, picks a winner, rewrites the page, moves the loser to a `## Superseded` section with date + reason, and logs the change. Only truly context-dependent ambiguity stays as a `contradicts:` cross-link.
 
-### Phase 3: Project Sync
+Plus a lightweight **Decision Records (ADR)** folder for trade-off choices the agent helps you make, and a **graphify bridge** so codebase questions (where is X defined, how does Y work) route through pre-built AST reports instead of grepping source.
 
-Every 6 hours, the agent scans `AGENTS.md` and `README.md` from your active projects. Changed files get extracted into `wiki/projects/`. Architecture docs stay synced automatically.
+Full schema: [`deploy/vps/SCHEMA.template.md`](deploy/vps/SCHEMA.template.md).
 
-### Daily Feed
+---
 
-A Python script calls the GitHub API, Hacker News API, and OpenRouter API at 6 AM. Trending repos, top stories, and model changes go into `raw/generated/`. All deduplicated.
+## 📂 Vault layout
 
-### Weekly Lint
+```
+SecondBrain/
+├── raw/                ← drop zone (immutable sources)
+│   ├── processed/      ← ingested files
+│   └── generated/      ← daily digests, lint reports
+└── wiki/               ← agent-maintained
+    ├── SCHEMA.md       ← rules the agent follows
+    ├── index.md        ← auto-updated content catalog
+    ├── log.md          ← append-only action log
+    ├── entities/       ← people · tools · companies · models
+    ├── concepts/       ← ideas · frameworks · strategies
+    ├── sources/        ← one summary per ingested source
+    ├── synthesis/      ← cross-topic patterns
+    ├── decisions/      ← ADRs (auto-written for non-trivial choices)
+    ├── episodic/       ← agent session records
+    └── projects/       ← synced from project docs
+```
 
-Karpathy recommended periodic wiki health checks. This build automates them. Orphan detection, contradiction flagging, missing concept suggestions, index validation.
+Standard Obsidian vault — open in Obsidian for the graph view, or browse on GitHub if you sync.
 
-### Personalized Curation
+---
 
-The feeds are not generic AI news. Topics are curated to your specific interests and projects:
+## ⚙️ Services (systemd)
 
-| Feed | Curated Topics |
-|------|---------------|
-| Daily digest | AI repos, HN stories, model pricing |
-| Weekly scans | 8 topics you choose (example: AI agents, video, marketing, Python, automation, analytics) |
-| Project sync | Your active project docs (AGENTS.md and README.md) |
+| Service | What | When |
+|---------|------|------|
+| `hermes-gateway-secondbrain-agent` | Discord bot + embedded dispatcher | Always on |
+| `secondbrain-watcher` | inotify on `raw/` → creates ingest tasks | Always on |
+| `secondbrain-heartbeat.timer` | Daily sweep + lint | 04:07 UTC |
 
-Every URL is checked against a dedup database. Zero repeats. The feeds evolve with your interests — update the topic list and the next scan reflects it.
-
-### Runs on Autopilot
-
-Four macOS launchd services survive reboot. The file watcher catches new content in real time. The cron heartbeat fires every 6 hours as a reliability fallback. Kanban dispatch via Hermes Agent routes every task to the right agent profile. Observability on every board — status, timestamps, output, assignee. No digging through logs.
+All units (with placeholders) are in [`deploy/vps/`](deploy/vps/).
 
 ---
 
 ## 💰 Cost
 
-| Component | Technology | Runs | Cost/mo |
-|-----------|-----------|------|---------|
-| 5 agent profiles | DeepSeek Flash | Every 6h | $0.03 |
-| Orchestration | Hermes Agent kanban | Continuous | $0.00 |
-| File watcher | fswatch + launchd | Real-time | $0.00 |
-| Daily feed | GitHub/HN/OR APIs | 6 AM daily | $0.00 |
-| Weekly scans | Agent browser | Sundays | $0.01 |
-| Wiki viewer | Obsidian | As needed | $0.00 |
-| Dedup | SQLite | Persistent | $0.00 |
-| **Total** | | | **$0.04** |
+Two scenarios, both real:
 
-Cheaper than one ChatGPT Plus month. Runs every day. You read. Agents write.
+| Component | Light use | Heavier use (daily ingest + queries) |
+|-----------|-----------|--------------------------------------|
+| LLM (DeepSeek Flash, auto-cached) | < $1/mo | $2-5/mo |
+| VPS (Hostinger KVM 2 or equivalent) | ~$8/mo | ~$8/mo |
+| Residential proxy (only if ingesting video from VPS) | $0 (skip) | ~$5 one-time (5 GB pay-as-you-go) |
+| Discord bot | $0 | $0 |
+| X API (pay-as-you-go) | $0 | ~$1-3/mo if you query often |
+| **Total** | **~$8/mo** | **~$15/mo** |
 
----
-
-## 📁 Vault Structure
-
-```
-~/SecondBrain/
-├── AGENTS.md             ← Agent instructions (schema)
-├── raw/                  ← Drop files here for ingestion
-│   ├── processed/        ← Ingested files (don't touch)
-│   └── generated/        ← Auto-generated digests
-├── wiki/
-│   ├── index.md          ← Auto-updated table of contents
-│   ├── log.md            ← Chronological operation log
-│   ├── entities/         ← People, companies, tools
-│   ├── concepts/         ← Ideas, frameworks, strategies
-│   ├── sources/          ← One summary per ingested file
-│   ├── synthesis/        ← Cross-topic patterns
-│   ├── episodic/         ← Agent session records
-│   └── projects/         ← Auto-synced from AGENTS.md
-├── outputs/              ← Logs, lint reports
-├── auto_ingest.py        ← Ingestion engine
-└── brain_server.py       ← Save server (bookmarklet)
-```
+Cheaper than most note apps' annual plan. The LLM is the variable — swapping to Claude or GPT-4 makes it 5-10× pricier; staying on DeepSeek Flash keeps it negligible.
 
 ---
 
-## 🔮 Obsidian — The Reading Layer
+## 🔒 Security model
 
-The wiki is a standard **Obsidian vault**. Every page uses Obsidian-flavored markdown with `[[wikilinks]]`. Karpathy described it best: *"Obsidian is the IDE. The LLM is the programmer. The wiki is the codebase."*
+- **Code in git, secrets on the server.** API keys, bot tokens, and proxy creds live in `~/.hermes/profiles/<profile>/.env` (chmod 600) and `~/.xurl`. None of them are ever committed.
+- **`.gitignore` blocks** `.env`, `*.env`, `.frag`, `*.bak.*`, and the vault itself.
+- **Gateway lockdown:** `gateway.allow_all_users: false` + a Discord-ID allowlist means only you can drive the bot.
+- **Pre-commit secret scan** in `.githooks/pre-commit` (enable with `git config core.hooksPath .githooks`).
+- **No secrets in this repo's history.** Verified via full `git rev-list --all` grep.
 
-**The agents write everything.** You read it in Obsidian:
-
-- 🕸️ **Graph view** — watch connections form between concepts, entities, and sources as the wiki grows
-- 🔗 **Wikilinks** — click any `[[link]]` to jump to a connected page. The LLM maintains all cross-references
-- 📋 **Backlinks** — see every page that references the current one. Discover connections you did not know existed
-- 🔍 **Search** — full-text search across hundreds of interlinked pages
-
-**What you do:** curate sources, drop files into `raw/`, ask questions, browse discoveries.
-
-**What the agents do:** read files, extract entities, write pages, update cross-references, maintain the index, run lint checks, flag contradictions. Everything that makes a knowledge base actually useful over time.
-
-The [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) repo provides MCP-based tools that let Hermes Agent interact with the vault programmatically — reading pages, searching for concepts, checking backlinks. The agents use these during every ingest and lint operation.
+If you fork, the same boundary applies: place your secrets in the gitignored `.env`/`.xurl`, never edit the unit files or scripts to hardcode them.
 
 ---
 
-## 🛠 Components
+## 🧩 What's intentionally not here
 
-| File | Purpose |
-|------|---------|
-| `setup.sh` | One-command install |
-| `auto_ingest.py` | Reads raw files, calls LLM, writes wiki entries |
-| `brain_server.py` | Local HTTP server for browser bookmarklet saves |
-| `scripts/daily_digest.py` | Collects GitHub, HN, OpenRouter data at 6 AM |
-| `scripts/file_watcher.sh` | Watches raw/ for new files, triggers kanban |
-| `scripts/backup.sh` | Backs up vault to timestamped directory |
-| `launchd/` | macOS services: ingest, watcher, daily digest, server |
-| `vault-template/` | Empty vault structure + AGENTS.md schema |
+A few decisions worth calling out:
+
+- **No vector DB / RAG.** The wiki *is* the retrieval surface. Karpathy's argument: at personal-KB scale, an LLM-maintained markdown index + graph search beats embeddings on quality and cost. This system follows that — `obsidian_mcp.py` exposes graph reads, not vector search.
+- **No bidirectional sync.** Mac → VPS is one-way (push captures). The VPS vault is the source of truth. If you want the vault visible on your Mac for Obsidian reading, use a periodic pull or Syncthing — but treat the VPS copy as canonical.
+- **No phone-side Obsidian sync required.** Query is via Discord (works on any device). Obsidian on your phone is optional, not load-bearing.
 
 ---
 
-## 🤖 Services (launchd)
+## 🧪 Tech
 
-| Service | When | What |
-|---------|------|------|
-| `com.secondbrain.ingest` | Daily 4:07 AM | Runs auto_ingest.py |
-| `com.secondbrain.watcher` | Real-time | Watches raw/ for new files |
-| `com.secondbrain.daily-digest` | Daily 6:00 AM | Runs daily_digest.py |
-| `com.secondbrain.server` | Always on | Save server on port 7331 |
-
-All survive reboot. View logs in `~/SecondBrain/outputs/`.
-
----
-
-## 🧩 Hermes Agent Integration
-
-For the full kanban-orchestrated system with 5 agent profiles on DeepSeek Flash:
-
-```bash
-hermes kanban init
-hermes kanban create --board secondbrain --title "Ingest" --assignee secondbrain-agent
-```
-
-The agents use [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) (MCP-based) to navigate and write to the Obsidian vault programmatically. The LLM handles all cross-referencing, link maintenance, and index updates.
+| | |
+|---|---|
+| **Agent runtime** | [Hermes Agent](https://github.com/NousResearch/hermes-agent) (Python 3.11+) |
+| **LLM** | DeepSeek V4 Flash via direct API · swappable to OpenRouter, Anthropic, local Ollama |
+| **Reader / viewer** | [Obsidian](https://obsidian.md) (free) |
+| **MCP** | Custom `obsidian_mcp.py` (graph reads) + xurl + scrapling + duckduckgo-search |
+| **Capture** | yt-dlp · faster-whisper (CPU) · youtube-transcript-api · fswatch · inotify-tools |
+| **Transport** | Discord (gateway) · scp (Mac→VPS) · residential HTTP proxy (optional) |
+| **Process mgmt** | systemd (Linux) · launchd (macOS) |
 
 ---
 
-## 📖 Inspiration
+## 📖 Inspiration & related work
 
-- [Karpathy's llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — the original concept
-- [kepano/obsidian-skills](https://github.com/kepano/obsidian-skills) — MCP skills for vault interaction
+- [Karpathy's llm-wiki gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) — the foundational pattern
+- [eugeniughelbur/obsidian-second-brain](https://github.com/eugeniughelbur/obsidian-second-brain) — a Claude Code skill-pack approach with bi-temporal facts and contradiction-resolve (both ideas borrowed here, adapted for the always-on architecture)
+- [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) — the agent framework this is built on
 - [Obsidian](https://obsidian.md) — the reading layer
-- [Hermes Agent](https://github.com/nousresearch/hermes-agent) — the orchestration layer
-- [DeepSeek](https://deepseek.com) — the AI engine
 
 ---
 
 ## 📄 License
 
-MIT — use it, fork it, ship it. If you build something with this, send it my way.
+MIT. Fork it, ship your version, send it back if you build something neat.
