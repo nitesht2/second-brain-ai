@@ -78,8 +78,9 @@ PROCESSED   = RAW_DIR / "processed"
 WIKI_DIR    = VAULT / "wiki"
 LOG_FILE    = VAULT / "outputs" / "ingest-log.md"
 
-# Brand Foundation lives in ~/.voice/ (Nitesh's brand voice directory).
+# Brand Foundation lives in ~/.voice/ (your brand voice directory).
 # Override via NITESH_VOICE_PATH env var if you keep voice files elsewhere.
+# (The env var name is a project default; rename in this file if you fork.)
 BRAND_DIR   = Path(os.environ.get(
     "NITESH_VOICE_PATH",
     str(Path.home() / ".voice"),

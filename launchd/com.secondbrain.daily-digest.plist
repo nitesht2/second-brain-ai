@@ -9,7 +9,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/python3</string>
-        <string>/Users/nitesh/Projects/second-brain-ai/scripts/daily_digest.py</string>
+        <string>/Users/YOUR_USER/Projects/second-brain-ai/scripts/daily_digest.py</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -24,15 +24,15 @@
     <false/>
 
     <key>StandardOutPath</key>
-    <string>/Users/nitesh/SecondBrain/outputs/digest.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/digest.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nitesh/SecondBrain/outputs/digest.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/digest.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>
-        <string>/Users/nitesh</string>
+        <string>/Users/YOUR_USER</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>

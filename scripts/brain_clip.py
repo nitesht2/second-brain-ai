@@ -23,7 +23,7 @@ def yt_id(u):
 def push(fp):
     try:
         subprocess.run(["scp", "-q", str(fp), f"{VPS}:{VPS_RAW}"], check=True, timeout=60)
-        print(f"  pushed to VPS -> Chanakya will ingest")
+        print(f"  pushed to VPS -> the agent will ingest")
     except Exception as e:
         print(f"  ! push failed ({e}); file is in local raw/, will sync later")
 
