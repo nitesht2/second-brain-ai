@@ -61,8 +61,19 @@ query results go in `synthesis/` or `concepts/`. Comparisons go in `concepts/`.
 ---
 confidence: high | medium | low
 explored: false
+valid_from: YYYY-MM-DD       # when the CLAIM became true in the world (per source)
+learned_on: YYYY-MM-DD       # when THIS VAULT first recorded it (creation date)
+last_verified: YYYY-MM-DD    # last time a fresh source confirmed it; bump on re-ingest
+superseded_by: [[New Page]]  # OPTIONAL — set when this page is replaced by a newer claim
+contradicts: [[Other Page]]  # OPTIONAL — set when two pages disagree on a live fact
 ---
 ```
+
+**Bi-temporal facts**: track `valid_from` (when true in reality) separately from
+`learned_on` (when you knew it). A 2024 fact ingested in 2026 has valid_from:2024,
+learned_on:2026 — vital for "what did I know and when" queries. Bump `last_verified`
+every time a re-ingest confirms the claim; stale `last_verified` (>180 days) signals
+the fact may have drifted.
 Body MUST follow:
 ```
 # Note Title
@@ -113,11 +124,27 @@ trading, productivity, business, tooling, prompt-engineering.
 - Don't create pages for passing mentions.
 - Split pages over ~200 lines.
 
-## Update Policy
+## Update Policy (auto-resolve contradictions, don't punt them)
 
-When new info conflicts with an existing page: check dates (newer usually wins);
-if genuinely contradictory, note both with dates + sources and flag for the human.
-Never silently overwrite.
+When a new source disagrees with an existing page, RESOLVE in-place:
+
+1. **Compare `valid_from` dates.** Newer claim usually supersedes older — but only
+   if the topic is time-sensitive (prices, model versions, company facts). For
+   timeless ideas (principles, definitions), recency doesn't decide.
+2. **Compare confidence + source count.** A single-source 2026 claim does NOT beat
+   a 5-source 2024 claim. Weight by `sources:` list length and source quality.
+3. **Pick a winner and rewrite the page** with the resolved claim. Move the loser
+   to a `## Superseded` section at the bottom with date + reason ("Replaced
+   2026-06-01 by [[New Source]]: X now does Y, was Z").
+4. **Stamp the loser page** with `superseded_by:` frontmatter pointing to the winner.
+5. **Genuinely irreconcilable?** (Both valid, depends on context — e.g. two
+   strategies, two opinions.) Then keep both, add `contradicts: [[Other Page]]` to
+   each, and write a one-line "When each applies" note. Lint surfaces these later.
+6. **Always log** the resolution in `log.md` with the date, both pages, and
+   which won. Never silently overwrite without leaving a trail.
+
+The old rule was "flag for the human." That makes contradictions pile up. The
+agent has enough context to resolve most; surface only the truly ambiguous ones.
 
 ## Automated Context
 
