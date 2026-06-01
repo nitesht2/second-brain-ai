@@ -83,6 +83,26 @@ Setup (all in the secondbrain-agent PROFILE, not global):
    if you keep ingest dispatch board-scoped and gateway only for chat — but the
    gateway dispatches too, so prefer stopping the standalone).
 
+### Make replies copy-paste friendly
+
+Hermes' `~/.hermes/config.yaml` has three knobs that decide when a reply gets sent as a single Discord attachment (non-selectable) vs as inline text messages (per-message selectable). Defaults are aggressive — most useful replies trip them and end up as attachments.
+
+In `~/.hermes/config.yaml`:
+
+```yaml
+paste_collapse_threshold: 40            # was 5  (lines)
+paste_collapse_threshold_fallback: 40   # was 5
+paste_collapse_char_threshold: 6000     # was 2000 (chars)
+```
+
+These raise the bar enough that normal Q&A answers stay inline (and selectable for partial copy). Discord still splits messages over 2000 chars into multiple posts automatically — each post is independently selectable. Genuinely long responses (>40 lines OR >6000 chars) still attach.
+
+Restart the gateway after editing:
+
+```bash
+systemctl --user restart hermes-gateway-<your-profile>
+```
+
 ### Discord gotchas (cost real debugging time)
 - **Slash-command cap (error 30032):** if the bot accumulates 100 global slash
   commands, sync crashes `_run_post_connect_initialization` and **silently blocks
