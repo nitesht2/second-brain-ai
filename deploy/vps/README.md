@@ -111,6 +111,74 @@ systemctl --user restart hermes-gateway-<your-profile>
 - Named-profile gateways don't inherit the global `~/.hermes/.env` — hence the drop-in.
 - Every gateway restart posts a one-off "Gateway shutting down" notice to the channel.
 
+## Scheduled synthesis skills (the autonomous layer)
+
+Four Hermes skills that read the vault on a schedule and write outputs back to it.
+Source lives in `deploy/vps/skills/`. Each is a directory with a single `SKILL.md`
+using Hermes' standard frontmatter format (`name`, `description`).
+
+| Skill | When | What it does | Output |
+|---|---|---|---|
+| `morning-brief` | Daily 06:00 | Reads index + recent log + hubs via obsidian-graph MCP, generates a brief grounded in actual vault content | `outputs/briefings/<date>-morning-brief.md` |
+| `connection-finder` | Sunday 17:00 | Finds non-obvious links between this-week notes and older hubs using `find_path` / `get_graph_neighbors`. Includes orphan rescues. | `outputs/analyses/<date>-connections.md` |
+| `weekly-synthesis` | Sunday 19:00 | Synthesizes the full week. Updates `wiki/index.md` priorities section in place. | `outputs/reviews/<date>-weekly-synthesis.md` |
+| `thinking-partner` | Sunday 20:00 | Surfaces tensions, underdeveloped claims, missing connections, open questions. Pushes, does not summarize. | `outputs/analyses/<date>-thinking-partner.md` |
+
+All four are graph-aware — they call the `obsidian-graph` MCP tools first
+(`get_hub_notes`, `trace_concept`, `find_path`, `get_graph_neighbors`) before
+falling back to raw file reads. This is what separates them from naive
+"read every file" scheduled jobs.
+
+### Install
+
+Copy the skill directories into the profile:
+
+```bash
+rsync -av deploy/vps/skills/ /root/.hermes/profiles/secondbrain-agent/skills/
+```
+
+Skills are auto-discovered on next gateway restart. Verify with:
+
+```bash
+ls /root/.hermes/profiles/secondbrain-agent/skills/ | grep -E "morning-brief|connection-finder|thinking-partner|weekly-synthesis"
+```
+
+### Schedule
+
+Use Hermes' built-in cron subsystem — NOT systemd timers (the gateway needs
+to be the dispatcher so the skill output flows back through Discord delivery).
+
+```bash
+hermes cron create "0 6 * * *" \
+  "Run the morning-brief skill against the SecondBrain vault." \
+  --name "morning-brief" --skills morning-brief \
+  --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
+
+hermes cron create "0 17 * * 0" \
+  "Run the connection-finder skill against the SecondBrain vault." \
+  --name "connection-finder" --skills connection-finder \
+  --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
+
+hermes cron create "0 19 * * 0" \
+  "Run the weekly-synthesis skill against the SecondBrain vault. Update wiki/index.md priorities in place." \
+  --name "weekly-synthesis" --skills weekly-synthesis \
+  --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
+
+hermes cron create "0 20 * * 0" \
+  "Run the thinking-partner skill against the SecondBrain vault." \
+  --name "thinking-partner" --skills thinking-partner \
+  --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
+```
+
+Jobs land in `~/.hermes/cron/jobs.json`. List with `hermes cron list`, pause
+with `hermes cron pause <name>`, run-once with `hermes cron run <name>`.
+
+### Notes
+
+- `--workdir /root/SecondBrain` matters: skills resolve relative paths (`outputs/`, `wiki/`) from cwd.
+- All four are read-mostly; only `weekly-synthesis` mutates the vault (it edits `wiki/index.md`). Markers `<!-- PRIORITIES_START -->` / `<!-- PRIORITIES_END -->` are added to `wiki/index.md` on first run.
+- First runs may take 60–120s each — they pull a lot of context. Subsequent runs hit DeepSeek's prompt cache.
+
 ## Mac-free clipping via residential proxy
 
 Datacenter IPs (your VPS) are blocked by YouTube/TikTok for scraping. A residential
