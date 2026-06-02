@@ -176,6 +176,8 @@ with `hermes cron pause <name>`, run-once with `hermes cron run <name>`.
 ### Notes
 
 - `--workdir /root/SecondBrain` matters: skills resolve relative paths (`outputs/`, `wiki/`) from cwd.
+- `--profile secondbrain-agent` is REQUIRED. The `obsidian-graph` MCP server is registered under this profile only. Running a skill under the default profile drops to degraded mode (file reads only, flagged in output).
+- For manual testing, invoke via the profile wrapper, not bare hermes: `secondbrain-agent -z "Run the morning-brief skill" --skills morning-brief` — not `hermes -z ...`.
 - All four are read-mostly; only `weekly-synthesis` mutates the vault (it edits `wiki/index.md`). Markers `<!-- PRIORITIES_START -->` / `<!-- PRIORITIES_END -->` are added to `wiki/index.md` on first run.
 - First runs may take 60–120s each — they pull a lot of context. Subsequent runs hit DeepSeek's prompt cache.
 
