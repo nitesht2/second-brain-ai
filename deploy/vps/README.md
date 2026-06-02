@@ -151,22 +151,22 @@ to be the dispatcher so the skill output flows back through Discord delivery).
 ```bash
 hermes cron create "0 6 * * *" \
   "Run the morning-brief skill against the SecondBrain vault." \
-  --name "morning-brief" --skills morning-brief \
+  --name "morning-brief" --skill morning-brief \
   --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
 
 hermes cron create "0 17 * * 0" \
   "Run the connection-finder skill against the SecondBrain vault." \
-  --name "connection-finder" --skills connection-finder \
+  --name "connection-finder" --skill connection-finder \
   --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
 
 hermes cron create "0 19 * * 0" \
   "Run the weekly-synthesis skill against the SecondBrain vault. Update wiki/index.md priorities in place." \
-  --name "weekly-synthesis" --skills weekly-synthesis \
+  --name "weekly-synthesis" --skill weekly-synthesis \
   --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
 
 hermes cron create "0 20 * * 0" \
   "Run the thinking-partner skill against the SecondBrain vault." \
-  --name "thinking-partner" --skills thinking-partner \
+  --name "thinking-partner" --skill thinking-partner \
   --profile secondbrain-agent --deliver discord --workdir /root/SecondBrain
 ```
 
@@ -177,7 +177,7 @@ with `hermes cron pause <name>`, run-once with `hermes cron run <name>`.
 
 - `--workdir /root/SecondBrain` matters: skills resolve relative paths (`outputs/`, `wiki/`) from cwd.
 - `--profile secondbrain-agent` is REQUIRED. The `obsidian-graph` MCP server is registered under this profile only. Running a skill under the default profile drops to degraded mode (file reads only, flagged in output).
-- For manual testing, invoke via the profile wrapper, not bare hermes: `secondbrain-agent -z "Run the morning-brief skill" --skills morning-brief` — not `hermes -z ...`.
+- For manual testing, invoke via the profile wrapper, not bare hermes: `secondbrain-agent -z "Run the morning-brief skill" --skill morning-brief` — not `hermes -z ...`.
 - All four are read-mostly; only `weekly-synthesis` mutates the vault (it edits `wiki/index.md`). Markers `<!-- PRIORITIES_START -->` / `<!-- PRIORITIES_END -->` are added to `wiki/index.md` on first run.
 - First runs may take 60–120s each — they pull a lot of context. Subsequent runs hit DeepSeek's prompt cache.
 
