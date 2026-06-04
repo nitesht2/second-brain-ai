@@ -8,6 +8,7 @@ SVC=hermes-gateway-secondbrain-agent
 ENVF=/root/.hermes/profiles/secondbrain-agent/.env
 LOG=/root/SecondBrain/outputs/chanakya_health.log
 BOARD=secondbrain
+VAULT=/root/SecondBrain
 STALLF=/root/.hermes/scripts/.sb_stall_count
 ALERTF=/root/.hermes/scripts/.sb_last_alert
 HB=/usr/local/bin/hermes
@@ -39,7 +40,13 @@ fi
 # 3. Kanban health (the 30h-silent-outage check)
 KOUT=$("$HB" kanban --board "$BOARD" stats 2>&1)
 if echo "$KOUT" | grep -qiE 'corrupt|integrity_check'; then
-  alert "kanban DB corrupt — ingest pipeline stalled. Rebuild: rm boards/$BOARD/kanban.db* then 'hermes kanban list'"
+  # AUTO-REBUILD: kanban is a transient queue (knowledge is in the vault), safe to rebuild
+  cd /root/.hermes/kanban/boards/$BOARD && rm -f kanban.db kanban.db-wal kanban.db-shm kanban.db.corrupt.*.bak
+  "$HB" kanban --board $BOARD list >/dev/null 2>&1
+  # requeue anything stuck in raw/ so nothing is lost
+  mkdir -p /tmp/wd_rq && find $VAULT/raw -maxdepth 1 -name '*.md' -exec mv {} /tmp/wd_rq/ \; 2>/dev/null
+  sleep 1; mv /tmp/wd_rq/*.md $VAULT/raw/ 2>/dev/null; rmdir /tmp/wd_rq 2>/dev/null
+  alert "kanban DB was corrupt — AUTO-REBUILT + requeued raw/. (recurrent; concurrent SQLite writers)"
 else
   # stall: ready tasks present but nothing running, persisting across checks
   READY=$(echo "$KOUT" | awk '/ready/{print $2; exit}'); RUN=$(echo "$KOUT" | awk '/running/{print $2; exit}')
