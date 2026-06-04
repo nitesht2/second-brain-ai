@@ -349,6 +349,24 @@ proxy makes yt-dlp look like a home connection. Any provider works (e.g. DataImp
 3. `scripts/clip.py` reads `BRAIN_PROXY` and routes yt-dlp through it. Restart the
    gateway. Then a video URL clips fully on the VPS (no Mac).
 
+### Instagram (and other login-walled sites) — cookies
+
+The proxy beats IP-blocking but **not** Instagram's login wall — IG requires an
+authenticated session even for public reels/captions. `clip.py` will use a
+Netscape `cookies.txt` if present (path: `~/.hermes/cookies.txt`, or override with
+`BRAIN_COOKIES`). With cookies, IG **reels** download + transcribe AND the post
+**caption** is captured (a photo-only post ingests its caption even with no audio).
+
+To enable:
+1. Log into Instagram in a browser (use a **burner** account — scraping can flag it).
+2. Export cookies with a "Get cookies.txt" browser extension (Netscape format).
+3. `scp cookies.txt vps:/root/.hermes/cookies.txt` (perms `600`).
+
+> Caveats: cookies expire every few weeks (re-export when IG ingest starts failing),
+> and heavy scraping can get the account rate-limited/banned — hence a burner.
+> Without cookies, `clip.py` prints "login-walled? add cookies" and skips; paste the
+> caption text to Chanakya instead.
+
 ## X / Twitter search + ingest via xurl
 
 Install: `curl -fsSL https://raw.githubusercontent.com/xdevplatform/xurl/main/install.sh | bash`
