@@ -12,9 +12,11 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 
 | File | Goes to | Purpose |
 |------|---------|---------|
-| `sb_watcher.sh` | `/root/SecondBrain/scripts/` | inotify on `raw/` → creates a kanban ingest task |
+| `sb_watcher.sh` | `/root/SecondBrain/scripts/` | inotify on `raw/` → calls `sb_ingest.sh` directly (kanban-free) |
+| `scripts/sb_ingest.sh` | `<vault>/scripts/` | ingest ONE raw file via the agent, `flock`-serialized + timeout (the ingest worker) |
+| `scripts/sb_retry_sweep.sh` | `<vault>/scripts/` | cron `*/15`: re-ingest any file lingering in `raw/` (failed/missed) |
 | `secondbrain-watcher.service` | `/etc/systemd/system/` | runs the watcher (Restart=always) |
-| `secondbrain-dispatch.service` | `/etc/systemd/system/` | board-scoped kanban dispatcher (`--force`) |
+| `secondbrain-dispatch.service` | `/etc/systemd/system/` | DEPRECATED for the brain (was the kanban dispatcher; brain is now kanban-free). Leave disabled. |
 | `secondbrain-heartbeat.service` | `/etc/systemd/system/` | daily sweep + lint task |
 | `secondbrain-heartbeat.timer` | `/etc/systemd/system/` | fires heartbeat 04:07 daily |
 | `SCHEMA.template.md` | `<vault>/wiki/SCHEMA.md` | agent-facing schema (Title Case, layout, evergreen format) |
@@ -26,6 +28,26 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | `scripts/book_drip.sh` | `/root/.hermes/scripts/` | idle-aware feeder: drips staged chunks from `_staging/` into `raw/` one at a time |
 
 Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
+
+## Ingest pipeline (kanban-free)
+
+The brain's ingest path is deliberately simple — **no kanban/SQLite**, because a
+single-user sequential ingest doesn't need a task board and the SQLite board
+corrupted under concurrent writers:
+
+```
+inotify (sb_watcher.sh) → sb_ingest.sh <file>  [flock: one at a time, timeout 600]
+   → hermes -p secondbrain-agent -z "<ingest prompt>" --skill llm-wiki
+   → agent writes wiki pages + moves raw/<file> → raw/processed/
+```
+
+- **`raw/` is the queue**, **`raw/processed/` is the audit trail**, **`flock` is claim-safety.**
+- **Retry:** a failed file stays in `raw/`; `sb_retry_sweep.sh` (cron `*/15`) re-runs it.
+- **Backpressure:** `book_drip.sh` feeds staged chunks only when `raw/` is empty and
+  no `sb_ingest` is running.
+
+> Hermes' kanban is still used by *other* profiles (quadstar/finance/trading) — this
+> only takes the **brain** off it. `secondbrain-dispatch.service` stays disabled.
 
 ## Prerequisites on the VPS
 
