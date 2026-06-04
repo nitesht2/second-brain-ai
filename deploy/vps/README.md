@@ -23,6 +23,8 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | `scripts/chanakya_watchdog.sh` | `/root/.hermes/scripts/` | 5-min gateway/token health check + auto-restart |
 | `scripts/vault_backup.sh` | `/root/.hermes/scripts/` | daily vault commit + push to GitHub |
 | `scripts/doc2md.py` | `<vault>/scripts/` | convert a document (PDF/Word/PPT/Excel/image) → Markdown into `raw/` |
+| `scripts/book2chapters.py` | `<vault>/scripts/` | split a book (PDF/ePub) into per-chapter Markdown, staged under `books/<slug>/` |
+| `scripts/book_drip.sh` | `/root/.hermes/scripts/` | idle-aware feeder: drips staged book chapters into `raw/` one at a time |
 
 Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
 
@@ -288,6 +290,33 @@ Why markitdown and not raw PDF text extraction: it preserves headings, tables, a
 lists, so the ingest agent extracts entities/concepts far better than from a flat
 text dump. It runs locally — no API cost. (Keep `clip.py` for video; markitdown's
 own YouTube path uses the caption API that the VPS IP is blocked from.)
+
+## Feeding books (chapter-split + idle drip)
+
+A whole book is too big for one ingest (exceeds the model context → lossy single
+note, and it stalls/floods the queue). Instead, split it into chapters and let
+them trickle in only when the pipeline is idle.
+
+```bash
+/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/book2chapters.py "book.pdf" --title "Book Title"
+```
+
+This converts the book (markitdown) and **stages** per-chapter Markdown under
+`books/<slug>/` — it does NOT touch `raw/`. Splitting is heading-based (picks the
+heading level that yields 3–60 chapters); if a PDF has no usable headings it falls
+back to ~3,500-word chunks at paragraph boundaries.
+
+[`scripts/book_drip.sh`](scripts/book_drip.sh) (cron `*/10`) then feeds them:
+
+- **only when the pipeline is idle** (kanban `ready=0` + `running=0` + `raw/` empty)
+- **one chapter per run** → moved to `raw/book-<slug>-NN-title.md` → normal ingest
+- skips entirely if kanban is unhealthy or busy with your live links/chat
+
+So a 24-chapter book becomes a connected note-cluster over a few idle hours, ~$1
+total, with zero impact on day-to-day capture. Progress logs to `outputs/book_feed.log`.
+
+> Limits: text + tables convert well; embedded images/diagrams are **not** described
+> (no vision step wired); URLs inside the book are recorded as text, not auto-fetched.
 
 ## Mac-free clipping via residential proxy
 
