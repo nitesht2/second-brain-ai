@@ -37,6 +37,19 @@ if [ "$STUCK" -gt 0 ] && [ "$ING" -eq 0 ]; then
   alert "ingest stalled: $STUCK file(s) stuck in raw/ >20min — kicked retry sweep"
 fi
 
+
+# 4. Stale-code / ImportError self-heal (Hermes edits its own core while running ->
+#    gateway serves a stale in-memory module -> ImportError on every message until restart)
+IMPERR=$(journalctl --user -u "$SVC" --since '6 min ago' 2>/dev/null | grep -ciE 'ImportError|cannot import name')
+if [ "$IMPERR" -gt 0 ]; then
+  LR=/root/.hermes/scripts/.sb_last_imprestart; last=$(cat "$LR" 2>/dev/null||echo 0); now=$(date +%s)
+  if [ $((now-last)) -ge 600 ]; then
+    note "ImportError x$IMPERR — restarting gateway to reload code"
+    systemctl --user restart "$SVC"; echo "$now" >"$LR"
+    alert "gateway hit ImportError (stale code after a Hermes self-edit) — auto-restarted to reload"
+  fi
+fi
+
 # hourly heartbeat
 M=$(date -u +%M); [ "$((10#$M))" -lt 5 ] && note "OK gw=$ACTIVE token=$CODE raw_stuck=$STUCK"
 exit 0
