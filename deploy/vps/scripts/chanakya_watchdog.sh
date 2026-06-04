@@ -39,7 +39,7 @@ fi
 
 # 3. Kanban health (the 30h-silent-outage check)
 KOUT=$("$HB" kanban --board "$BOARD" stats 2>&1)
-if echo "$KOUT" | grep -qiE 'corrupt|integrity_check'; then
+if echo "$KOUT" | grep -qiE 'corrupt|integrity_check|disk i.o error|operationalerror'; then
   # AUTO-REBUILD: kanban is a transient queue (knowledge is in the vault), safe to rebuild
   cd /root/.hermes/kanban/boards/$BOARD && rm -f kanban.db kanban.db-wal kanban.db-shm kanban.db.corrupt.*.bak
   "$HB" kanban --board $BOARD list >/dev/null 2>&1
