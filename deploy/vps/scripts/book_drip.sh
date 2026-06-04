@@ -5,7 +5,7 @@
 set -u
 export TZ=America/Los_Angeles
 VAULT=/root/SecondBrain
-BOOKS=$VAULT/books
+BOOKS=$VAULT/_staging
 RAW=$VAULT/raw
 LOG=$VAULT/outputs/book_feed.log
 HB=/usr/local/bin/hermes
