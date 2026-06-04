@@ -22,6 +22,7 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | `scripts/run_brain_skill.sh` | `/root/.hermes/scripts/` | Pacific/DST-safe skill runner + Discord delivery |
 | `scripts/chanakya_watchdog.sh` | `/root/.hermes/scripts/` | 5-min gateway/token health check + auto-restart |
 | `scripts/vault_backup.sh` | `/root/.hermes/scripts/` | daily vault commit + push to GitHub |
+| `scripts/doc2md.py` | `<vault>/scripts/` | convert a document (PDF/Word/PPT/Excel/image) → Markdown into `raw/` |
 
 Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
 
@@ -259,6 +260,34 @@ file /root/.hermes/profiles/secondbrain-agent/bin/tirith   # if "Mach-O arm64" �
 cp /root/.hermes/bin/tirith /root/.hermes/profiles/secondbrain-agent/bin/tirith
 /root/.hermes/profiles/secondbrain-agent/bin/tirith --version   # should print, not error
 ```
+
+## Document ingestion (PDF / Word / PowerPoint / Excel / images)
+
+The web path (`web_extract`) handles HTML; the video path (`clip.py`) handles
+media. Documents are the third lane — converted to clean, structure-preserving
+Markdown with [microsoft/markitdown](https://github.com/microsoft/markitdown) via
+[`scripts/doc2md.py`](scripts/doc2md.py).
+
+```bash
+/root/SecondBrain/.venv/bin/pip install 'markitdown[pdf,docx,pptx,xlsx]'
+cp deploy/vps/scripts/doc2md.py /root/SecondBrain/scripts/ && chmod +x /root/SecondBrain/scripts/doc2md.py
+```
+
+Usage (the agent runs this; you can too):
+
+```bash
+/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/doc2md.py "<file-path-or-url>"
+```
+
+It converts the doc → Markdown and drops it in `raw/` — so it flows through the
+**same** watcher → ingest pipeline as everything else (dedup, cross-link, SCHEMA).
+Chanakya routes documents here automatically (see `SOUL.md`): a pasted/attached
+PDF or Office file → `doc2md.py`, a video URL → `clip.py`, an article → `web_extract`.
+
+Why markitdown and not raw PDF text extraction: it preserves headings, tables, and
+lists, so the ingest agent extracts entities/concepts far better than from a flat
+text dump. It runs locally — no API cost. (Keep `clip.py` for video; markitdown's
+own YouTube path uses the caption API that the VPS IP is blocked from.)
 
 ## Mac-free clipping via residential proxy
 

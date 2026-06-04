@@ -22,3 +22,7 @@ faster-whisper>=1.0
 # NOTE: pulls a full Chromium (~400MB disk + RAM during runs). On a small VPS
 # consider switching the downloader to yt-dlp instead — lighter, no browser.
 playwright>=1.40
+
+# Document -> Markdown conversion (scripts/doc2md.py). Handles the formats the
+# web/video paths don't: PDF, Word, PowerPoint, Excel, images. Local, no API cost.
+markitdown[pdf,docx,pptx,xlsx]>=0.1
