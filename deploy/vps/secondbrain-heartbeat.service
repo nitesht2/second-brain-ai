@@ -6,4 +6,4 @@ Type=oneshot
 WorkingDirectory=/root/SecondBrain
 Environment=HOME=/root
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStart=/usr/local/bin/hermes kanban --board secondbrain create "Heartbeat: sweep + lint" --assignee secondbrain-agent --workspace dir:/root/SecondBrain --skill llm-wiki --body "Sweep: ingest any files still in raw/ (not raw/processed/) per the llm-wiki skill and wiki/SCHEMA.md. Then run a quick wiki lint: report orphan pages, broken [[wikilinks]], and any concept/entity notes missing 'Why It Matters' or 'Counter-arguments'. Append a log.md entry."
+ExecStart=/usr/local/bin/hermes kanban --board secondbrain create "Heartbeat: sweep + lint" --assignee secondbrain-agent --workspace dir:/root/SecondBrain --skill llm-wiki --body "Sweep: ingest any files still in raw/ (not raw/processed/) per the llm-wiki skill and wiki/SCHEMA.md. Then run a quick wiki lint: report orphan pages, broken [[Exact Page Title]]-style links, and any concept/entity notes missing 'Why It Matters' or 'Counter-arguments'. Append a log.md entry."
