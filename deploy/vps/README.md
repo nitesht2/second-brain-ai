@@ -26,8 +26,15 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | `scripts/vault_backup.sh` | `/root/.hermes/scripts/` | daily vault commit + push to GitHub |
 | `scripts/doc2md.py` | `<vault>/scripts/` | size-aware doc→Markdown: small → `raw/`; large (book/long file) → chapter chunks staged under `_staging/<slug>/` |
 | `scripts/book_drip.sh` | `/root/.hermes/scripts/` | idle-aware feeder: drips staged chunks from `_staging/` into `raw/` one at a time |
+| `hardened/` (dir) | `/etc/systemd/system/` + gateway `.d/` drop-in | **Security hardening** for the units above — de-caps root + filesystem-confines the agent (blast-radius cut for prompt-injection). Opt-in; see [`hardened/README.md`](hardened/README.md). |
 
 Paths assume `HOME=/root`. Adjust if deploying as a non-root user.
+
+> **Security note:** the units above run **as root with no sandboxing**, and the
+> agent ingests untrusted external content. Before relying on this in production,
+> apply the confinement drop-ins in [`hardened/`](hardened/README.md) (de-cap root +
+> read-only filesystem except vault/profile). Safe to apply in place; non-root
+> migration documented there too.
 
 ## Ingest pipeline (kanban-free)
 

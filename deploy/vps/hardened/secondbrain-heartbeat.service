@@ -1,0 +1,39 @@
+[Unit]
+Description=Second Brain heartbeat (sweep raw/ + lint fallback)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/SecondBrain
+Environment=HOME=/root
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/hermes kanban --board secondbrain create "Heartbeat: sweep + lint" --assignee secondbrain-agent --workspace dir:/root/SecondBrain --skill llm-wiki --body "Sweep: ingest any files still in raw/ (not raw/processed/) per the llm-wiki skill and wiki/SCHEMA.md. Then run a quick wiki lint: report orphan pages, broken [[Exact Page Title]]-style links, and any concept/entity notes missing 'Why It Matters' or 'Counter-arguments'. Append a log.md entry."
+
+# ============================================================================
+# HARDENING (option 2) — same rationale as secondbrain-watcher.service.
+# This oneshot enqueues an agent task that ingests untrusted content; confine it.
+# See hardened/README.md.
+# ============================================================================
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/root/SecondBrain /root/.hermes
+ProtectProc=invisible
+ProcSubset=pid
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+
+# Non-root migration (option 1) — see hardened/README.md before enabling.
+#User=secondbrain
+#Group=secondbrain

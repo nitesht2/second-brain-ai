@@ -1,0 +1,84 @@
+# systemd USER drop-in that HARDENS the per-profile Hermes gateway.
+# Path: ~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d/hardening.conf
+#
+# This is a SECOND drop-in, alongside the existing override.conf (the one that
+# force-loads the profile .env). systemd merges every *.conf in the .d/ dir, so
+# keep both files. WHY a drop-in: Hermes regenerates the base unit on restart and
+# wipes inline edits; drop-ins survive regeneration.
+#
+# WHY this is the most important file in here: the gateway is the ALWAYS-ON agent.
+# It answers Discord chat, and when you paste a link it runs clip.py / doc2md /
+# web_extract on UNTRUSTED content with --yolo. A prompt-injection here = code-exec
+# as root on the whole box (all sibling profiles' keys, the GitHub deploy key, the
+# Discord token). This block caps the blast radius to the vault + the Hermes profile.
+#
+# Requires systemd >= 248 for ReadWritePaths under a user manager. Ubuntu 24.04
+# ships 255 — fine. TEST the watcher/heartbeat units FIRST (non-interactive), then
+# apply this and watch the gateway through a few live messages (verify cmds below).
+[Service]
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Read-only filesystem except: the runtime dir (%t = /run/user/0, for the gateway's
+# own sockets), the vault, the Hermes profile/state, and xurl's config (optional).
+# The leading '-' on /root/.xurl makes it ignored if absent (xurl is optional).
+ProtectSystem=strict
+ReadWritePaths=%t /root/SecondBrain /root/.hermes -/root/.xurl
+
+ProtectProc=invisible
+ProcSubset=pid
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Block namespace creation. REMOVE if you use the playwright/chromium capture
+# fallback in chat (chromium needs user namespaces, or run it with --no-sandbox).
+RestrictNamespaces=yes
+
+# ----------------------------------------------------------------------------
+# SELF-EDIT DECISION (read before applying):
+# ProtectSystem=strict makes /usr/local/lib/hermes-agent READ-ONLY, which blocks
+# Hermes from rewriting its own installed code at runtime (the behavior the
+# watchdog's ImportError self-heal exists for). Two choices:
+#
+#   (A) RECOMMENDED — leave as-is. Blocking self-modifying code is good security.
+#       After applying, watch the journal (below). If the gateway runs clean
+#       through several messages, you are done.
+#
+#   (B) If the gateway crash-loops with EROFS / "Read-only file system" /
+#       ImportError right after applying, Hermes is self-writing under /usr/local.
+#       Either upgrade Hermes the normal way (apt/installer, not self-edit) and
+#       keep (A), or, to preserve self-edit at the cost of weaker isolation, add:
+#           ReadWritePaths=/usr/local/lib/hermes-agent
+#       (append to the ReadWritePaths line above).
+# ----------------------------------------------------------------------------
+
+# Resource caps for the 8 GB box — optional, tune with `systemd-cgtop --order=memory`.
+#MemoryHigh=4G
+#MemoryMax=5G
+
+# --- Install ---------------------------------------------------------------
+#   mkdir -p ~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d
+#   cp hermes-gateway-hardening.override.conf.example \
+#      ~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d/hardening.conf
+#   systemctl --user daemon-reload
+#   systemctl --user restart hermes-gateway-secondbrain-agent
+#
+# --- Verify it took + the bot still works ----------------------------------
+#   systemctl --user show hermes-gateway-secondbrain-agent \
+#     -p ProtectSystem -p ReadWritePaths -p CapabilityBoundingSet -p NoNewPrivileges
+#   journalctl --user -u hermes-gateway-secondbrain-agent -f      # then DM the bot
+#
+# --- Rollback (instant) -----------------------------------------------------
+#   rm ~/.config/systemd/user/hermes-gateway-secondbrain-agent.service.d/hardening.conf
+#   systemctl --user daemon-reload && systemctl --user restart hermes-gateway-secondbrain-agent

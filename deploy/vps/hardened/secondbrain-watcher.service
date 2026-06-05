@@ -1,0 +1,88 @@
+[Unit]
+Description=Second Brain raw/ file watcher (inotify -> sb_ingest.sh, kanban-free)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/root/SecondBrain/scripts/sb_watcher.sh
+Restart=always
+RestartSec=5
+Environment=HOME=/root
+
+# ============================================================================
+# HARDENING (option 2: confine in place, still euid=root)
+# Why this matters: this unit's child (sb_ingest.sh -> hermes --yolo) feeds
+# UNTRUSTED ingested content to an LLM agent that runs shell tools. The block
+# below shrinks the blast radius of a prompt-injection -> tool-exec to "the
+# vault + the Hermes profile, and nothing else on the box."
+# Verified safe for this path: ingest writes only under /root/SecondBrain
+# (flock at /root/SecondBrain/.ingest.lock, logs in outputs/). See hardened/README.md.
+# ----------------------------------------------------------------------------
+
+# No setuid/sudo escalation, and drop ALL root capabilities (workload needs none:
+# no <1024 bind, no mount, no chown-across-users). Neuters root in place.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Whole filesystem read-only EXCEPT these two trees. /usr, /etc, /boot, other
+# homes, other profiles' dirs become unwritable. This is the single biggest win.
+# NOTE: this makes /usr/local/lib/hermes-agent READ-ONLY -> blocks Hermes from
+# self-editing its installed code. That is GOOD security (stops self-modifying
+# code), but if Hermes errors on it see hardened/README.md "self-edit" note.
+ProtectSystem=strict
+ReadWritePaths=/root/SecondBrain /root/.hermes
+
+# Hide other users'/processes' /proc entries from the agent.
+ProtectProc=invisible
+ProcSubset=pid
+
+# Private /tmp (its own namespace; flock is on a vault file, unaffected).
+PrivateTmp=yes
+
+# Kernel / clock / hostname tamper-proofing (workload touches none of these).
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+
+# Misc least-privilege.
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+
+# Network: allow IPv4/IPv6 + unix sockets (OpenRouter/Discord/GitHub/proxy/yt-dlp),
+# block exotic families (AF_NETLINK, AF_PACKET, ...).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Block namespace creation. SAFE for yt-dlp/ffmpeg/whisper/git.
+# REMOVE this line if you use the optional playwright/chromium capture fallback
+# (chromium needs user namespaces, or must be run with --no-sandbox).
+RestrictNamespaces=yes
+
+# --- Resource caps: TUNE, do not blind-set. whisper transcription is hungry;
+# a hard cap can OOM-kill it mid-run. Watch `systemd-cgtop` first, then opt in.
+# (You already run 4 GB swap + concurrency throttle, so these are optional.)
+#MemoryHigh=5G
+#MemoryMax=6G
+#CPUQuota=180%
+
+# --- Aggressive, opt-in ONLY after the above is proven stable for a day.
+# May break native JIT / some tools. Test on this (non-interactive) path first.
+#MemoryDenyWriteExecute=yes
+#PrivateDevices=yes
+#SystemCallFilter=@system-service
+#SystemCallErrorNumber=EPERM
+
+# --- NON-ROOT MIGRATION (option 1): biggest single hardening win, but it is a
+# migration, NOT a drop-in. Do NOT uncomment alone — it breaks until you also
+# move the vault, .hermes, cron jobs, and the gateway's user-systemd to that
+# user. Full checklist in hardened/README.md.
+#User=secondbrain
+#Group=secondbrain
+
+[Install]
+WantedBy=multi-user.target

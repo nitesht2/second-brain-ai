@@ -1,0 +1,52 @@
+[Unit]
+Description=Second Brain kanban dispatcher (routes tasks to secondbrain-agent)
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/SecondBrain
+ExecStart=/usr/local/bin/hermes kanban --board secondbrain daemon --force --interval 60 --max 1 --pidfile /run/sb-dispatch.pid
+Restart=always
+RestartSec=10
+Environment=HOME=/root
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+
+# ============================================================================
+# HARDENING (option 2) — provided for parity.
+# NOTE: this unit is DEPRECATED for the brain (now kanban-free) and should stay
+# DISABLED (see ../README.md). Hardening it is belt-and-suspenders only.
+#
+# GOTCHA if you ever re-enable it: ExecStart writes --pidfile /run/sb-dispatch.pid,
+# but ProtectSystem=strict makes /run READ-ONLY. Use a systemd-managed runtime
+# dir + a pidfile inside it instead, e.g.:
+#     RuntimeDirectory=sb-dispatch
+#     ExecStart=... --pidfile /run/sb-dispatch/sb-dispatch.pid
+# (RuntimeDirectory= auto-creates /run/sb-dispatch writable and cleans it up.)
+# ============================================================================
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/root/SecondBrain /root/.hermes
+ProtectProc=invisible
+ProcSubset=pid
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+
+# Non-root migration (option 1) — see ../README.md before enabling.
+#User=secondbrain
+#Group=secondbrain
+
+[Install]
+WantedBy=multi-user.target
