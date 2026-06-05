@@ -44,7 +44,7 @@ query results go in `synthesis/` or `concepts/`. Comparisons go in `concepts/`.
 - **Filenames: Title Case with spaces**, e.g. `Meta Ads Lead Gen Framework.md`.
   NOT lowercase-hyphen. This matches the entire existing vault.
 - Every wiki page has YAML frontmatter (see formats below).
-- Use `[[wikilinks]]`. **Minimum 2 outbound links per page** (hard rule).
+- Use `[[Exact Page Title]]-style links`. **Minimum 2 outbound links per page** (hard rule).
 - **Append, never overwrite.** If a page exists, add new info and bump dates.
   Prefer linking to an existing entry over creating a near-duplicate.
 - **Check before creating.** Read index.md + `search_vault`/`search_files` for the
