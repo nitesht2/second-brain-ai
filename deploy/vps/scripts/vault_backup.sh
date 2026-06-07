@@ -9,6 +9,7 @@ cd "$V" || exit 0
 mkdir -p "$V/_profile"
 cp -f /root/.hermes/profiles/secondbrain-agent/SOUL.md "$V/_profile/SOUL.md" 2>/dev/null
 cp -f /root/.hermes/profiles/secondbrain-agent/config.yaml "$V/_profile/config.yaml" 2>/dev/null
+/root/.hermes/scripts/wiki_sanitize.sh
 git add -A 2>/dev/null
 if git diff --cached --quiet 2>/dev/null; then
   echo "$(ts) no changes" >> "$LOG"; exit 0
