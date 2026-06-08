@@ -26,3 +26,17 @@ playwright>=1.40
 # Document -> Markdown conversion (scripts/doc2md.py). Handles the formats the
 # web/video paths don't: PDF, Word, PowerPoint, Excel, images. Local, no API cost.
 markitdown[pdf,docx,pptx,xlsx]>=0.1
+
+# Clean article extraction from URLs (scripts/doc2md.py article lane). trafilatura
+# strips nav/ads/boilerplate -> just the article body. Local, no API key. Replaces
+# the unconfigured `web_extract` tool for article/blog URLs.
+trafilatura>=2.0
+
+# JS-rendered/SPA article fallback. doc2md.py renders via playwright connect_over_cdp
+# -> LightPanda (lightweight headless browser, ~10x lighter than Chromium), then
+# re-extracts with trafilatura. LightPanda is NOT a pip package — install the binary
+# on the VPS (free, open-source):
+#   curl -fsSL -o /root/.local/bin/lightpanda \
+#     https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux
+#   chmod +x /root/.local/bin/lightpanda
+# (the `playwright` pkg above is the CDP client; no `playwright install` needed to CDP-connect.)

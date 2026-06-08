@@ -293,14 +293,21 @@ cp /root/.hermes/bin/tirith /root/.hermes/profiles/secondbrain-agent/bin/tirith
 
 ## Document ingestion (PDF / Word / PowerPoint / Excel / images)
 
-The web path (`web_extract`) handles HTML; the video path (`clip.py`) handles
-media. Documents are the third lane — converted to clean, structure-preserving
-Markdown with [microsoft/markitdown](https://github.com/microsoft/markitdown) via
-[`scripts/doc2md.py`](scripts/doc2md.py).
+Article/blog URLs and documents both go through [`scripts/doc2md.py`](scripts/doc2md.py)
+(the unconfigured `web_extract` tool is no longer used). Articles are extracted with
+[trafilatura](https://github.com/adbar/trafilatura) (strips nav/ads → clean body); if a
+page is JS-rendered/SPA, it falls back to a [LightPanda](https://lightpanda.io) headless
+render → trafilatura; documents (PDF/Word/PPT/Excel/image) convert via
+[microsoft/markitdown](https://github.com/microsoft/markitdown). All local, no API key.
+The video path (`clip.py`) handles media.
 
 ```bash
-/root/SecondBrain/.venv/bin/pip install 'markitdown[pdf,docx,pptx,xlsx]'
+/root/SecondBrain/.venv/bin/pip install 'markitdown[pdf,docx,pptx,xlsx]' trafilatura playwright
 cp deploy/vps/scripts/doc2md.py /root/SecondBrain/scripts/ && chmod +x /root/SecondBrain/scripts/doc2md.py
+# JS-render fallback (free, open-source headless browser; binary, not a pip pkg):
+curl -fsSL -o /root/.local/bin/lightpanda \
+  https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux
+chmod +x /root/.local/bin/lightpanda
 ```
 
 Usage (the agent runs this; you can too):
@@ -318,8 +325,8 @@ Usage (the agent runs this; you can too):
   `_staging/<slug>/` — it does NOT flood `raw/`.
 
 Chanakya routes here automatically (see `SOUL.md`): document/book → `doc2md.py`,
-video → `clip.py`, article → `web_extract`. No "is it a book?" decision — it's
-purely by size.
+article/blog URL → `doc2md.py` (trafilatura + LightPanda fallback), video → `clip.py`.
+For docs it's purely by size — no "is it a book?" decision.
 
 Why markitdown and not raw PDF text extraction: it preserves headings, tables, and
 lists, so the ingest agent extracts entities/concepts far better than a flat text
