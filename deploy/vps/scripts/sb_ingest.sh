@@ -15,6 +15,7 @@ echo "$(ts) START $F" >>"$LOG"
 cd "$V" || exit 1
 timeout 600 "$HB" -p secondbrain-agent -z "$PROMPT" --skill llm-wiki --yolo >>"$LOG" 2>&1
 rc=$?
+/root/.hermes/scripts/wiki_sanitize.sh
 if [ ! -f "$RAW/$F" ]; then echo "$(ts) OK $F (rc=$rc -> processed)" >>"$LOG"
 else echo "$(ts) INCOMPLETE $F (rc=$rc, still in raw, will retry)" >>"$LOG"; fi
 exit 0
