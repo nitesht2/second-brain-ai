@@ -1,0 +1,7 @@
+[Unit]
+Description=Timer: semantic index refresh (04:00 America/Los_Angeles)
+[Timer]
+OnCalendar=*-*-* 04:00:00 America/Los_Angeles
+Persistent=true
+[Install]
+WantedBy=timers.target

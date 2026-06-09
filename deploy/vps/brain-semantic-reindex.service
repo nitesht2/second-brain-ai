@@ -1,0 +1,13 @@
+[Unit]
+Description=Second Brain semantic index refresh (incremental embeddings)
+After=network-online.target
+[Service]
+Type=oneshot
+TimeoutStartSec=600
+Environment=HOME=/root
+ExecStart=/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/semantic_index.py
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/root/SecondBrain /root/.cache
+PrivateTmp=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
