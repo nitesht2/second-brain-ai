@@ -40,3 +40,9 @@ trafilatura>=2.0
 #     https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux
 #   chmod +x /root/.local/bin/lightpanda
 # (the `playwright` pkg above is the CDP client; no `playwright install` needed to CDP-connect.)
+
+# Semantic ("by meaning") search over the vault. scripts/semantic_index.py builds a
+# local numpy embedding index (BAAI/bge-small, CPU, no API key); scripts/semantic_query.py
+# searches it. obsidian_mcp.py's search_vault is hybrid (keyword + semantic). Refreshed
+# nightly by the brain-semantic-reindex.timer (04:00 PT). numpy + onnxruntime are deps.
+fastembed>=0.4
