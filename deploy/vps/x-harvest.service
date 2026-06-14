@@ -1,0 +1,17 @@
+[Unit]
+Description=Second Brain: harvest X bookmarks into raw/ (sync mode)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Bookmarks can fan out into many doc2md/clip fetches on a big sync; allow room.
+TimeoutStartSec=3600
+Environment=HOME=/root
+# Proxy/keys for the clip.py video path (BRAIN_PROXY etc.); '-' = optional.
+EnvironmentFile=-/root/.hermes/profiles/secondbrain-agent/.env
+# Sync mode (no --backfill): stops at the first fully-seen page = few API calls.
+ExecStart=/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/harvest_x.py --source bookmarks
+
+[Install]
+WantedBy=multi-user.target
