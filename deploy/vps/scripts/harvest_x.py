@@ -342,7 +342,12 @@ def ingest_url(url: str, kind: str, dry_run: bool) -> bool:
     tag = "ok" if res.returncode == 0 else f"FAIL[{res.returncode}]"
     line = (res.stdout or res.stderr).strip().splitlines()
     print(f"  {tag} {tool.name}: {url}  {line[-1] if line else ''}")
-    return res.returncode == 0
+    ok = res.returncode == 0
+    # X-native videos that fail are usually silent/deleted (permanent failure);
+    # mark them seen so the twice-daily timer doesn't re-download + re-fail forever.
+    if kind == "xvideo" and not ok:
+        return True
+    return ok
 
 
 # ── pagination / main loop ─────────────────────────────────────────────────
