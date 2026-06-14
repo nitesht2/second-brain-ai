@@ -29,6 +29,7 @@ Env overrides: SB_DOC2MD, SB_CLIP, SB_RAW, BRAIN_COOKIES.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import ipaddress
 import json
 import os
@@ -353,8 +354,26 @@ def fetch_page(endpoint: str, base_params: dict, token: str | None) -> dict:
     return xurl_get(f"{endpoint}?{query}")
 
 
+def _acquire_lock(source: str):
+    """Single-instance guard per source so a manual backfill and the timer's
+    sync run can't run concurrently and stomp the same seen-file. Returns the
+    held lock handle, or None if another run owns it."""
+    SEEN_DIR.mkdir(parents=True, exist_ok=True)
+    lf = open(SEEN_DIR / f"x_{source}.lock", "w")
+    try:
+        fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lf.close()
+        return None
+    return lf  # released automatically when the process exits
+
+
 def run(source: str, backfill: bool, dry_run: bool,
         include_posts: bool, max_pages: int | None) -> int:
+    lock = _acquire_lock(source)
+    if lock is None:
+        print(f"another harvest [{source}] is already running; exiting")
+        return 0
     endpoint = SOURCES[source][0].format(id=my_user_id())
     base_params = SOURCES[source][1]
     seen = load_seen(source)
