@@ -1,0 +1,13 @@
+[Unit]
+Description=Second Brain voice-journal watcher (inotify journal/inbox -> transcribe to private journal)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/root/SecondBrain/scripts/sb_journal_watcher.sh
+Restart=always
+RestartSec=5
+Environment=HOME=/root
+
+[Install]
+WantedBy=multi-user.target

@@ -119,6 +119,10 @@ Five ways to feed the brain. Pick whichever fits your workflow — you don't nee
 
 All five paths converge on a single drop zone (`raw/`). The watcher detects new files, the dispatcher queues an ingest task, the agent runs, processed files move to `raw/processed/`.
 
+### Plus a private voice journal
+
+A separate, **private** lane for journaling, affirmations, and manifestation — kept out of the knowledge wiki entirely (never ingested, never cross-linked). Record a voice memo, get the audio into `journal/inbox/` (via Syncthing, a downloaded Discord voice message, AirDrop, `scp` — any transport), and a watcher transcribes it (faster-whisper, same engine as the video path) into a dated entry in `journal/<YYYY-MM-DD>.md`. Works manually too: `python scripts/voice_journal.py memo.m4a`. See [`vault-template/journal/README.md`](vault-template/journal/README.md) and the [voice-journal deploy section](deploy/vps/README.md#voice-journal-private-transcription-lane).
+
 ---
 
 ## 🧠 What the agent writes
