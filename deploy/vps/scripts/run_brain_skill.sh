@@ -21,7 +21,10 @@ cd "$V" || exit 1
 MARK=$(mktemp); touch "$MARK"
 echo "$(ts) START $SKILL" >> "$LOG"
 timeout 600 "$HB" -p secondbrain-agent -z "$PROMPT" --skill "$SKILL" --yolo >/dev/null 2>&1
-/root/.hermes/scripts/wiki_sanitize.sh
+# hold the ingest lock so sanitize never races the agent's own index.md writes
+[ -x /root/.hermes/scripts/wiki_sanitize.sh ] \
+  && flock "$V/.ingest.lock" /root/.hermes/scripts/wiki_sanitize.sh \
+  || echo "$(ts) WARN wiki_sanitize.sh missing" >> "$LOG"
 OUT=$(find "$V/outputs/$SUB" -name "*$SUF*.md" -newer "$MARK" 2>/dev/null | head -1)
 rm -f "$MARK"
 if [ -n "$OUT" ]; then

@@ -6,7 +6,9 @@ export HOME=/root PATH=/usr/local/bin:/usr/bin:/bin
 RAW=/root/SecondBrain/raw
 ING=/root/SecondBrain/scripts/sb_ingest.sh
 LOG=/root/SecondBrain/outputs/watcher.log
-inotifywait -m -e close_write -e moved_to --format '%f' "$RAW" 2>/dev/null | while read -r fname; do
+mkdir -p "$RAW"
+# stderr NOT discarded: a missing dir or inotify error must show in the journal, not die silently
+inotifywait -m -e close_write -e moved_to --format '%f' "$RAW" | while read -r fname; do
   case "$fname" in .*|*.tmp|*.swp|*~|*.part) continue ;; esac
   case "$fname" in *.md|*.txt|*.pdf) ;; *) continue ;; esac
   sleep 2

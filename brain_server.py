@@ -79,7 +79,7 @@ def filename_from_url(url: str, title: str) -> str:
 
 def is_youtube(url: str) -> bool:
     """Return True if the URL is a YouTube video."""
-    host = urlparse(url).netloc.lower().lstrip("www.")
+    host = urlparse(url).netloc.lower().removeprefix("www.")
     return host in {"youtube.com", "youtu.be", "m.youtube.com"}
 
 
@@ -107,6 +107,7 @@ class SaveHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/save":
             self.send_response(404)
+            self._cors()
             self.end_headers()
             return
 
@@ -116,6 +117,7 @@ class SaveHandler(BaseHTTPRequestHandler):
             data = json.loads(body)
         except json.JSONDecodeError:
             self.send_response(400)
+            self._cors()
             self.end_headers()
             return
 

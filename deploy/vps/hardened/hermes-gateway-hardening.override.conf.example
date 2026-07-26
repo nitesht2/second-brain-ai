@@ -24,7 +24,7 @@ AmbientCapabilities=
 # own sockets), the vault, the Hermes profile/state, and xurl's config (optional).
 # The leading '-' on /root/.xurl makes it ignored if absent (xurl is optional).
 ProtectSystem=strict
-ReadWritePaths=%t /root/SecondBrain /root/.hermes -/root/.xurl
+ReadWritePaths=%t /root/SecondBrain /root/.hermes /root/.cache -/root/.xurl
 
 ProtectProc=invisible
 ProcSubset=pid

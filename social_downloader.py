@@ -161,11 +161,23 @@ def transcribe(video_path: Path) -> str:
     if shutil.which("whisper-cli") and Path(WHISPER_MODEL).exists():
         print(f"  ▶ Transcribing with whisper-cli (Metal GPU)...")
         try:
-            result = subprocess.run(
-                ["whisper-cli", "-m", WHISPER_MODEL, str(video_path), "--output-txt", "--no-prints"],
+            # whisper-cli only accepts audio (flac/mp3/ogg/wav), so decode
+            # the .mp4 to 16kHz mono wav with ffmpeg first.
+            wav_path = video_path.with_suffix(".wav")
+            ffmpeg = subprocess.run(
+                ["ffmpeg", "-y", "-i", str(video_path), "-ar", "16000", "-ac", "1", str(wav_path)],
                 capture_output=True, text=True, timeout=300,
             )
-            txt_path = video_path.with_suffix(".txt")
+            if ffmpeg.returncode != 0:
+                raise RuntimeError(f"ffmpeg decode failed (exit {ffmpeg.returncode})")
+            result = subprocess.run(
+                ["whisper-cli", "-m", WHISPER_MODEL, str(wav_path), "--output-txt", "--no-prints"],
+                capture_output=True, text=True, timeout=300,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"whisper-cli failed (exit {result.returncode})")
+            # whisper-cli writes <input>.txt next to the input, e.g. video.wav.txt
+            txt_path = Path(str(wav_path) + ".txt")
             if txt_path.exists():
                 transcript = txt_path.read_text(encoding="utf-8").strip()
                 txt_path.unlink()

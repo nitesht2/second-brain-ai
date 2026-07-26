@@ -11,7 +11,6 @@ Environment=HOME=/root
 # Proxy/keys for the clip.py video path (BRAIN_PROXY etc.); '-' = optional.
 EnvironmentFile=-/root/.hermes/profiles/secondbrain-agent/.env
 # Sync mode (no --backfill): stops at the first fully-seen page = few API calls.
-ExecStart=/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/harvest_x.py --source bookmarks
-
-[Install]
-WantedBy=multi-user.target
+# --max-pages caps a cold start (empty seen file) that would otherwise paginate
+# the whole bookmark history and blow the timeout + API quota.
+ExecStart=/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/harvest_x.py --source bookmarks --max-pages 5

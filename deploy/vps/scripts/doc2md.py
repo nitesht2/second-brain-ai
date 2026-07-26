@@ -10,7 +10,7 @@ still yields nothing (e.g. a PDF/doc URL), fall back to markitdown download+conv
 
 Usage: doc2md.py <file-or-url> [--title "Name"] [--max-words N] [--dry-run]
 """
-import sys, os, re, argparse, tempfile, urllib.request, subprocess, time, socket
+import sys, os, re, argparse, tempfile, urllib.request, subprocess, time, socket, hashlib, shutil
 
 VAULT='/root/SecondBrain'; RAW=VAULT+'/raw'; STAGING=VAULT+'/_staging'
 LIGHTPANDA='/root/.local/bin/lightpanda'
@@ -25,7 +25,10 @@ def split_by_heading(md):
     for lvl in (1,2,3):
         idxs=[m.start() for m in re.finditer(r'^#{%d}\s+\S'%lvl, md, re.M)]
         if 3<=len(idxs)<=60:
-            return [md[idxs[i]:(idxs[i+1] if i+1<len(idxs) else len(md))].strip() for i in range(len(idxs))]
+            parts=[md[idxs[i]:(idxs[i+1] if i+1<len(idxs) else len(md))].strip() for i in range(len(idxs))]
+            pre=md[:idxs[0]].strip()   # keep intro/abstract before the first heading
+            if pre: parts.insert(0,pre)
+            return parts
     return None
 
 def split_by_size(md):
@@ -40,23 +43,25 @@ def split_by_size(md):
 def title_of(c,fb):
     m=re.match(r'^#{1,3}\s+(.+)', c); return (m.group(1).strip() if m else fb)[:60]
 
-def _port_ready(port, timeout=8):
+def _port_ready(proc, port, timeout=8):
     end=time.time()+timeout
     while time.time()<end:
+        if proc.poll() is not None: return False   # lightpanda died, stop waiting
         with socket.socket() as s:
             s.settimeout(0.5)
             if s.connect_ex(('127.0.0.1',port))==0: return True
         time.sleep(0.3)
     return False
 
-def _render_html(url, port=9222):
+def _render_html(url):
     """Render a JS page with LightPanda over CDP; return HTML or None. Lazy: only
     spawned when trafilatura's plain fetch came back thin."""
     if not os.path.exists(LIGHTPANDA): return None
+    with socket.socket() as s: s.bind(('127.0.0.1',0)); port=s.getsockname()[1]   # ephemeral port, no clash between runs
     proc=subprocess.Popen([LIGHTPANDA,'serve','--host','127.0.0.1','--port',str(port)],
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        if not _port_ready(port): return None
+        if not _port_ready(proc, port): return None
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             b=p.chromium.connect_over_cdp('http://127.0.0.1:%d'%port)
@@ -67,7 +72,8 @@ def _render_html(url, port=9222):
     finally:
         proc.terminate()
         try: proc.wait(timeout=5)
-        except Exception: proc.kill()
+        except Exception:
+            proc.kill(); proc.wait()   # reap, no zombie
 
 def extract_article(url):
     """(clean_text, title, how) for an article URL, or (None,None,None) if not an article."""
@@ -75,17 +81,17 @@ def extract_article(url):
     html=trafilatura.fetch_url(url)
     opts=dict(include_comments=False, include_links=False, favor_recall=True)
     txt=trafilatura.extract(html, **opts) if html else None
-    how='trafilatura'
+    how='trafilatura'; used=html   # html the winning extraction came from
     if not txt or len(txt)<MIN_ARTICLE_CHARS:
         rhtml=_render_html(url)
         if rhtml:
             t2=trafilatura.extract(rhtml, **opts)
-            if t2 and len(t2)>=MIN_ARTICLE_CHARS: txt,how=t2,'lightpanda+trafilatura'
+            if t2 and len(t2)>=MIN_ARTICLE_CHARS: txt,how,used=t2,'lightpanda+trafilatura',rhtml
     if not txt or len(txt)<MIN_ARTICLE_CHARS:
         return None,None,None
     title=None
     try:
-        md=trafilatura.extract_metadata(html) if html else None
+        md=trafilatura.extract_metadata(used) if used else None
         title=getattr(md,'title',None)
     except Exception: pass
     return txt.strip(), title, how
@@ -124,12 +130,16 @@ def main():
     if words<=a.max_words:
         os.makedirs(RAW,exist_ok=True)
         out=os.path.join(RAW, slug(name)+'.md')
+        if os.path.exists(out):   # same slug, different doc: suffix with source hash instead of clobbering
+            out=os.path.join(RAW, slug(name)+'-'+hashlib.sha256(a.src.encode()).hexdigest()[:8]+'.md')
         open(out,'w').write(f'<!-- source: {a.src} | doc2md ({how}) -->\n\n'+text+'\n')
         print(f'OK small doc ({words} words, {how}) -> {out}. Watcher will ingest it.')
     else:
         parts=split_by_heading(text); hw='heading'
         if not parts: parts=split_by_size(text); hw='size'
-        sl=slug(name); d=os.path.join(STAGING,sl); os.makedirs(d,exist_ok=True); tot=len(parts)
+        sl=slug(name); d=os.path.join(STAGING,sl)
+        shutil.rmtree(d, ignore_errors=True)   # clear leftovers from a prior same-slug ingest
+        os.makedirs(d,exist_ok=True); tot=len(parts)
         for i,c in enumerate(parts,1):
             ct=title_of(c,f'Part {i}')
             open(os.path.join(d,f'{i:02d}-{slug(ct)}.md'),'w').write(

@@ -9,7 +9,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>$HOME/.hermes/scripts/file_watcher.sh</string>
+        <string>/Users/YOUR_USER/.hermes/scripts/file_watcher.sh</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -19,15 +19,15 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>$HOME/SecondBrain/outputs/watcher.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/watcher.log</string>
 
     <key>StandardErrorPath</key>
-    <string>$HOME/SecondBrain/outputs/watcher.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/watcher.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>
-        <string>$HOME</string>
+        <string>/Users/YOUR_USER</string>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>

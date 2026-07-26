@@ -3,7 +3,7 @@
 YouTube: fast caption fetch (no download). Other sites: yt-dlp audio + whisper-cli (Metal).
 Usage: brain_clip.py <url>
 """
-import re, sys, subprocess, tempfile, shutil
+import hashlib, json, re, sys, subprocess, tempfile, shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -30,11 +30,13 @@ def push(fp):
 def write(title, url, platform, text, uploader=""):
     RAW.mkdir(parents=True, exist_ok=True)
     fp = RAW / f"{safe(title)}.md"
+    if fp.exists():  # title collision: suffix with url hash instead of overwriting
+        fp = RAW / f"{safe(title)}-{hashlib.sha256(url.encode()).hexdigest()[:8]}.md"
     fp.write_text(f'''---
-title: "{title}"
+title: {json.dumps(title)}
 source: {url}
 platform: {platform}
-uploader: "{uploader}"
+uploader: {json.dumps(uploader)}
 created: {datetime.now().strftime('%Y-%m-%d')}
 tags: [{platform.lower()}, clip, transcript]
 ---
@@ -84,9 +86,14 @@ def main():
         if not (shutil.which("whisper-cli") and Path(WHISPER_MODEL).exists()):
             print("  whisper-cli/model missing"); return 1
         print(f'  transcribing "{title}" ({platform}) with whisper-cli (Metal)...')
-        subprocess.run(["whisper-cli","-m",WHISPER_MODEL,str(wav),"--output-txt","--no-prints"],
-                       capture_output=True, timeout=900)
-        txt = wav.with_suffix(".txt")
+        try:
+            r = subprocess.run(["whisper-cli","-m",WHISPER_MODEL,str(wav),"--output-txt","--no-prints"],
+                               capture_output=True, timeout=900)
+        except subprocess.TimeoutExpired:
+            print("  whisper-cli timed out"); return 1
+        if r.returncode != 0:
+            print(f"  whisper-cli failed (exit {r.returncode})"); return 1
+        txt = Path(str(wav) + ".txt")  # whisper-cli writes <input>.txt, e.g. a.wav.txt
         text = txt.read_text(encoding="utf-8").strip() if txt.exists() else ""
         if not text: print("  empty transcript"); return 1
         write(title, url, platform, text, uploader); return 0
