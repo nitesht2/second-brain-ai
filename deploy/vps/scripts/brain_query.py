@@ -36,6 +36,11 @@ def load_index() -> tuple[np.ndarray, list[dict]]:
     emb_path, meta_path = OUT / "embeddings.npy", OUT / "meta.json"
     if not emb_path.exists() or not meta_path.exists():
         sys.exit(f"no index at {OUT} — build it first with semantic_index.py")
+    info_path = OUT / "index_info.json"
+    if info_path.exists():  # absent on indexes built before fingerprinting, then trust as before
+        built_with = json.loads(info_path.read_text()).get("model")
+        if built_with != MODEL:
+            sys.exit(f"index built with {built_with}, script expects {MODEL}; re-run semantic_index.py")
     emb = np.load(emb_path)
     meta = json.loads(meta_path.read_text())
     if len(meta) != emb.shape[0]:
