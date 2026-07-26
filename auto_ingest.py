@@ -42,6 +42,7 @@ import json
 import shutil
 import urllib.request
 import urllib.error
+from html.parser import HTMLParser
 from pathlib import Path
 from datetime import datetime
 
@@ -309,6 +310,63 @@ def fetch_github_readme(url: str) -> str:
     return f"# GitHub Repo: {owner}/{repo}\n\nSource: {url}\n\n(README not found)"
 
 
+class _HTMLTextStripper(HTMLParser):
+    """Collect visible text from an HTML page, skipping script/style blocks."""
+
+    _SKIP_TAGS = {"script", "style", "noscript", "template"}
+
+    def __init__(self):
+        super().__init__()
+        self._chunks = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in self._SKIP_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if not self._skip_depth and data.strip():
+            self._chunks.append(data.strip())
+
+    def get_text(self) -> str:
+        return "\n".join(self._chunks)
+
+
+def fetch_article_text(url: str) -> str:
+    """Fetch a web page and return its visible text, or "" if unusable.
+
+    Used for bare article URLs captured by the bookmarklet. Returns "" when
+    the fetch fails or the page yields 300 chars or less, so the caller can
+    leave the file in raw/ instead of letting the model invent a summary
+    from the URL string alone.
+    """
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "second-brain-ingest/1.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        print(f"  ⚠ Could not fetch {url} ({e}) - leaving file in raw/.")
+        return ""
+
+    stripper = _HTMLTextStripper()
+    try:
+        stripper.feed(html)
+        stripper.close()
+    except Exception as e:
+        print(f"  ⚠ Could not parse HTML from {url} ({e}) - leaving file in raw/.")
+        return ""
+
+    text = stripper.get_text()
+    if len(text) <= 300:
+        print(f"  ⚠ Only {len(text)} chars extracted from {url} - leaving file in raw/.")
+        return ""
+    return text
+
+
 def is_already_ingested(video_id: str) -> bool:
     """Return True if a YouTube video ID already exists in any wiki/sources/ entry.
 
@@ -389,6 +447,18 @@ def extract_content(file_path) -> str:
         if is_bare_url and "github.com/" in first:
             readme = fetch_github_readme(first)
             return readme if readme else raw
+        if is_bare_url:
+            # Bookmarklet drop: a bare article URL, optionally followed by the
+            # user's own notes. Fetch the real page text so the model never
+            # writes a source note from the URL string alone.
+            print(f"  ▶ Bare URL detected - fetching article text: {first}")
+            article = fetch_article_text(first)
+            if not article:
+                return ""
+            user_notes = "\n".join(lines[1:]).strip()
+            if user_notes:
+                return f"{first}\n\n{user_notes}\n\n{article}"
+            return f"{first}\n\n{article}"
         return raw
 
     return ""
