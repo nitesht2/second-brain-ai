@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 VAULT=Path.home()/"SecondBrain"; WIKI=VAULT/"wiki"; OUT=VAULT/".semantic"
 MODEL="BAAI/bge-small-en-v1.5"; MAXCHARS=4000
+BATCH=int(os.environ.get("SB_EMBED_BATCH","32"))  # fastembed defaults to 256, which peaks ~7GB on a full 2.5k-note re-embed and gets OOM-killed on this 8GB box; 32 peaks ~1.3GB
 def notes():
     for f in WIKI.rglob("*.md"):
         if any(p.startswith('.') for p in f.parts): continue
@@ -40,7 +41,7 @@ def main():
     if to_embed:
         from fastembed import TextEmbedding
         model=TextEmbedding(MODEL)
-        for (fi,_),v in zip(to_embed, model.embed([t for _,t in to_embed])):
+        for (fi,_),v in zip(to_embed, model.embed([t for _,t in to_embed], batch_size=BATCH)):
             v=np.asarray(v,dtype=np.float32); emb[fi]=v/(np.linalg.norm(v)+1e-9)
     np.save(OUT/"embeddings.tmp.npy", emb); os.replace(OUT/"embeddings.tmp.npy", OUT/"embeddings.npy")
     (OUT/"meta.tmp.json").write_text(json.dumps(rows)); os.replace(OUT/"meta.tmp.json", OUT/"meta.json")

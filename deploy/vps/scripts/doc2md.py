@@ -128,7 +128,17 @@ def _render_html(url):
         from playwright.sync_api import sync_playwright
         with sync_playwright() as p:
             b=p.chromium.connect_over_cdp('http://127.0.0.1:%d'%port)
-            pg=b.new_page(); pg.goto(url, timeout=30000, wait_until='load')
+            pg=b.new_page()
+            # goto() follows 30x itself and loads subresources, so vetting `url`
+            # above is not enough: vet every request the browser makes. Fails
+            # closed, since a raise here lands in the except and returns None.
+            def _vet(route, request):
+                try: _public_ip(request.url)
+                except Exception: route.abort(); return
+                route.continue_()
+            pg.route('**/*', _vet)
+            pg.goto(url, timeout=30000, wait_until='load')
+            _public_ip(pg.url)   # backstop if interception silently no-ops
             html=pg.content(); b.close(); return html
     except Exception as e:
         sys.stderr.write('lightpanda render failed: %r\n'%e); return None

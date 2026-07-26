@@ -3,7 +3,11 @@ Description=Second Brain semantic index refresh (incremental embeddings)
 After=network-online.target
 [Service]
 Type=oneshot
-TimeoutStartSec=600
+# A full re-embed (model change / missing fingerprint) takes ~520s for ~2580 notes; 600s left almost no margin.
+TimeoutStartSec=1800
+# Guard rail: an unbounded run peaked at 7.2GB and triggered the global OOM killer on this 8GB box.
+# Measured peak with SB_EMBED_BATCH=32 is ~1.3GB, so 3G is >2x headroom and keeps a regression from taking down other services.
+MemoryMax=3G
 Environment=HOME=/root
 ExecStart=/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/semantic_index.py
 NoNewPrivileges=yes
