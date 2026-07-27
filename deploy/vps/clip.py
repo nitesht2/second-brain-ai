@@ -4,7 +4,7 @@ Uses a residential proxy (env BRAIN_PROXY) so YouTube/TikTok/etc. work from the 
 yt-dlp downloads bestaudio -> faster-whisper transcribes. YouTube also tries captions first.
 Usage: clip.py <url> [--model base.en|small]
 """
-import os, re, sys, tempfile
+import hashlib, json, os, re, sys, tempfile
 from pathlib import Path
 from datetime import datetime
 
@@ -20,13 +20,15 @@ def yt_id(u):
     m = re.search(r'(?:v=|youtu\.be/|shorts/|embed/)([A-Za-z0-9_-]{11})', u); return m.group(1) if m else None
 def write(title, url, platform, text, uploader='', caption=''):
     RAW.mkdir(parents=True, exist_ok=True); fp = RAW / f'{safe(title)}.md'
+    if fp.exists():  # same normalized title, different video: suffix with url hash instead of overwriting
+        fp = RAW / f'{safe(title)}-{hashlib.sha256(url.encode()).hexdigest()[:8]}.md'
     cap_section = f'## Caption\n\n{caption}\n\n' if caption else ''
     tr_section = f'## Transcript\n\n{text}\n' if text else ''
     fp.write_text(f'''---
-title: "{title}"
+title: {json.dumps(title)}
 source: {url}
 platform: {platform}
-uploader: "{uploader}"
+uploader: {json.dumps(uploader)}
 created: {datetime.now().strftime('%Y-%m-%d')}
 tags: [{platform.lower()}, clip]
 ---
@@ -40,7 +42,10 @@ Source: {url}
 
 def main():
     if len(sys.argv) < 2: print('usage: clip.py <url> [--model NAME]'); return 1
-    url = sys.argv[1]; model = sys.argv[sys.argv.index('--model')+1] if '--model' in sys.argv else 'base.en'
+    url = sys.argv[1]; model = 'base.en'
+    if '--model' in sys.argv:
+        mi = sys.argv.index('--model')+1
+        if mi < len(sys.argv): model = sys.argv[mi]  # bare trailing --model keeps default
     if not PROXY: print('WARN: BRAIN_PROXY not set — YouTube/TikTok likely blocked from datacenter IP')
     vid = yt_id(url)
     if vid:
@@ -58,7 +63,7 @@ def main():
     import yt_dlp
     with tempfile.TemporaryDirectory() as td:
         out = str(Path(td)/'a.%(ext)s')
-        opts = {'format':'bestaudio/best','outtmpl':out,'quiet':True,'noprogress':True,
+        opts = {'format':'bestaudio/best','outtmpl':out,'quiet':True,'noprogress':True,'noplaylist':True,
                 'postprocessors':[{'key':'FFmpegExtractAudio','preferredcodec':'mp3','preferredquality':'128'}]}
         if PROXY: opts['proxy'] = PROXY
         if os.path.exists(COOKIES): opts['cookiefile'] = COOKIES  # IG/login-walled sites

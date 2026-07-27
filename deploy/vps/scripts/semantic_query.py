@@ -6,9 +6,15 @@ import numpy as np
 OUT=Path.home()/"SecondBrain"/".semantic"; MODEL="BAAI/bge-small-en-v1.5"
 def main():
     q=sys.argv[1] if len(sys.argv)>1 else ""
-    k=int(sys.argv[2]) if len(sys.argv)>2 else 8
+    k=int(sys.argv[2]) if len(sys.argv)>2 and sys.argv[2].isdigit() else 8
     if not q.strip(): print("[]"); return
+    info=OUT/"index_info.json"  # model fingerprint; absent on pre-fingerprint indexes, then proceed
+    if info.exists():
+        built=json.loads(info.read_text()).get("model")
+        if built!=MODEL: sys.exit(f"index built with {built}, script expects {MODEL}; re-run semantic_index.py")
     meta=json.loads((OUT/"meta.json").read_text()); emb=np.load(OUT/"embeddings.npy")
+    if len(meta)!=emb.shape[0]:
+        sys.exit(f"index out of sync ({len(meta)} meta rows vs {emb.shape[0]} vectors); re-run semantic_index.py")
     from fastembed import TextEmbedding
     qv=np.asarray(list(TextEmbedding(MODEL).embed([q]))[0],dtype=np.float32)
     qv=qv/(np.linalg.norm(qv)+1e-9)

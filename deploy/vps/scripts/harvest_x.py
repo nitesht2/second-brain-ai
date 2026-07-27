@@ -34,6 +34,7 @@ import ipaddress
 import json
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -80,7 +81,7 @@ def _resolve_python() -> str:
 
 TOOL_PYTHON = _resolve_python()
 RAW = Path(os.environ.get("SB_RAW", str(Path.home() / "SecondBrain" / "raw"))).expanduser()
-COOKIES = Path(os.environ.get("BRAIN_COOKIES", str(Path.home() / ".hermes" / "cookies.txt")))
+COOKIES = Path(os.environ.get("BRAIN_COOKIES", str(Path.home() / ".hermes" / "cookies.txt"))).expanduser()
 SEEN_DIR = Path.home() / ".hermes" / "data" / "feeds"
 PAGE_SIZE = 100  # X max for bookmarks/likes/tweets
 
@@ -113,10 +114,11 @@ def load_seen(source: str) -> dict:
             data = json.loads(p.read_text())
             data.setdefault("seen_urls", {})
             data.setdefault("seen_ids", {})
+            data.setdefault("pending", {})
             return data
         except (json.JSONDecodeError, ValueError):
             print(f"WARN: {p} unreadable/corrupt; starting fresh", file=sys.stderr)
-    return {"seen_urls": {}, "seen_ids": {}}
+    return {"seen_urls": {}, "seen_ids": {}, "pending": {}}
 
 
 def save_seen(source: str, data: dict) -> None:
@@ -161,6 +163,9 @@ def xurl_get(path: str, retries: int = 4) -> dict:
             msg = json.dumps(data["errors"])[:200]
             if ("429" in msg or "rate" in msg.lower()) and attempt < retries:
                 time.sleep(delay); delay = min(delay * 2, 120); continue
+            # Non-rate errors (revoked scope, suspended app, ...) must not read
+            # as an empty-but-successful page; surface them as a failed run.
+            raise RuntimeError(f"xurl API error: {msg}")
         return data
     raise RuntimeError(f"xurl exhausted retries: {path}")  # unreachable
 
@@ -175,7 +180,8 @@ def my_user_id() -> str:
 
 # ── url helpers / classification ───────────────────────────────────────────
 def host_of(url: str) -> str:
-    return urllib.parse.urlparse(url).netloc.lower().split("@")[-1].removeprefix("www.")
+    # hostname (unlike netloc) is lowercased and strips port/brackets/userinfo
+    return (urllib.parse.urlparse(url).hostname or "").removeprefix("www.")
 
 
 def _host_matches(host: str, domains) -> bool:
@@ -234,11 +240,12 @@ def x_article_key(tweet: dict) -> str:
 
 
 # ── SSRF guard ─────────────────────────────────────────────────────────────
-def is_safe_public_url(url: str) -> bool:
-    """Reject non-http(s) and any host resolving to private/loopback/link-local/
-    reserved/metadata space. Bookmarked URLs are attacker-influenceable; this is
-    the only thing standing between a crafted bookmark and a server-side GET to
-    169.254.169.254 or an RFC1918 host. Fails closed."""
+def is_safe_public_url(url: str) -> bool | None:
+    """Reject non-http(s) and any host resolving to non-global (private/loopback/
+    link-local/reserved/metadata) space. Bookmarked URLs are attacker-influenceable;
+    this is the only thing standing between a crafted bookmark and a server-side GET
+    to 169.254.169.254 or an RFC1918 host. Fails closed. Returns None when the host
+    could not be resolved (transient DNS) so the caller can retry instead of drop."""
     parts = urllib.parse.urlparse(url)
     if parts.scheme not in ("http", "https"):
         return False
@@ -246,9 +253,13 @@ def is_safe_public_url(url: str) -> bool:
     if not host:
         return False
     try:
-        infos = socket.getaddrinfo(host, parts.port or (443 if parts.scheme == "https" else 80))
-    except OSError:
+        port = parts.port  # raises ValueError on a malformed port
+    except ValueError:
         return False
+    try:
+        infos = socket.getaddrinfo(host, port or (443 if parts.scheme == "https" else 80))
+    except OSError:
+        return None  # could not resolve; likely transient, not proven unsafe
     if not infos:
         return False
     for info in infos:
@@ -256,8 +267,7 @@ def is_safe_public_url(url: str) -> bool:
             ip = ipaddress.ip_address(info[4][0])
         except ValueError:
             return False
-        if (ip.is_private or ip.is_loopback or ip.is_link_local
-                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+        if not ip.is_global:  # private/loopback/link-local/reserved/CGNAT/...
             return False
     return True
 
@@ -270,9 +280,10 @@ def _slug(title: str) -> str:
 
 def _write_raw_note(title: str, url: str, body: str, *, tags: str, created: str, uid: str) -> None:
     RAW.mkdir(parents=True, exist_ok=True)
-    fp = RAW / f"{_slug(title)}-{str(uid)[-8:]}.md"  # id suffix avoids collisions
+    fp = RAW / f"{_slug(title)}-{uid}.md"  # full id suffix avoids collisions
     fp.write_text(
-        f'---\ntitle: "{title}"\nsource: {url}\nplatform: X\n'
+        # json.dumps keeps the title a valid YAML double-quoted scalar
+        f'---\ntitle: {json.dumps(title)}\nsource: {url}\nplatform: X\n'
         f'created: {created}\ntags: [{tags}]\n---\n\n# {title}\n\nSource: {url}\n\n{body}\n',
         encoding="utf-8",
     )
@@ -313,14 +324,18 @@ def ingest_url(url: str, kind: str, dry_run: bool) -> bool:
     """Route a fetchable URL to the right extractor. Returns True if the URL is
     handled (success OR a deliberate skip we should not retry); False only on a
     transient failure worth retrying next run."""
-    if not is_safe_public_url(url):
+    safe = is_safe_public_url(url)
+    if safe is None:
+        print(f"  SKIP[resolve] host did not resolve (transient?): {url}")
+        return False  # retry next run; DNS blips must not drop bookmarks
+    if not safe:
         print(f"  SKIP unsafe/non-public url: {url}")
         return True  # never retry an attacker-chosen internal target
 
     if kind == "xvideo":
         if not COOKIES.exists():
             print(f"  SKIP x-native video (no cookies at {COOKIES}): {url}")
-            return True  # not retryable until cookies exist; don't churn
+            return False  # retry once cookies appear; recheck is a free stat()
         tool = CLIP
     else:
         tool = CLIP if is_video(url) else DOC2MD
@@ -338,7 +353,7 @@ def ingest_url(url: str, kind: str, dry_run: bool) -> bool:
         return False  # transient -> retry next run
     except OSError as exc:
         print(f"  FAIL[spawn] {tool.name}: {url}  {exc}")
-        return True  # bad path/interpreter, not retryable
+        return False  # broken path/interpreter is fixable; don't eat the backlog
     tag = "ok" if res.returncode == 0 else f"FAIL[{res.returncode}]"
     line = (res.stdout or res.stderr).strip().splitlines()
     print(f"  {tag} {tool.name}: {url}  {line[-1] if line else ''}")
@@ -383,9 +398,20 @@ def run(source: str, backfill: bool, dry_run: bool,
     base_params = SOURCES[source][1]
     seen = load_seen(source)
     seen_urls, seen_ids = seen["seen_urls"], seen["seen_ids"]
+    pending = seen["pending"]
     token, new_count, pages = None, 0, 0
 
     try:
+        # Re-attempt URLs stranded by transient failures in earlier runs. The
+        # sync stop rule can't reach them: seen_ids records EVERY tweet, so
+        # pagination stops at page 1 long before their tweets come around again.
+        if pending:
+            print(f"retrying {len(pending)} pending url(s) from earlier runs")
+        for url, info in list(pending.items()):
+            if ingest_url(url, info.get("kind", "external"), dry_run):
+                seen_urls[url] = info.get("created", "")
+                del pending[url]
+
         while True:
             page = fetch_page(endpoint, base_params, token)
             tweets = page.get("data", []) or []
@@ -419,6 +445,10 @@ def run(source: str, backfill: bool, dry_run: bool,
                     page_new += 1; new_count += 1
                     if ok:
                         seen_urls[url] = tw.get("created_at", "")
+                        pending.pop(url, None)
+                    else:
+                        # transient failure: queue for retry at next run's start
+                        pending[url] = {"kind": kind, "created": tw.get("created_at", "")}
 
                 # 3. pure-text post (only if nothing else to ingest)
                 if include_posts and not handled_external:
@@ -450,11 +480,14 @@ def run(source: str, backfill: bool, dry_run: bool,
 
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     print(f"done [{source}] {stamp}: {new_count} new across {pages} page(s); "
-          f"{len(seen_urls)} urls / {len(seen_ids)} tweets tracked")
+          f"{len(seen_urls)} urls / {len(seen_ids)} tweets tracked; {len(pending)} pending")
     return 0
 
 
 def main() -> int:
+    # systemd's TimeoutStartSec kill arrives as SIGTERM; convert it to SystemExit
+    # so run()'s finally-block save_seen still flushes in-page progress.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     ap = argparse.ArgumentParser(description="Harvest X bookmarks/likes/timeline into the Second Brain.")
     ap.add_argument("--source", choices=list(SOURCES), default="bookmarks")
     ap.add_argument("--backfill", action="store_true", help="paginate everything (first import)")

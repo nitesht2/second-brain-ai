@@ -45,7 +45,7 @@ def get_concept_files():
 
 def get_frontmatter_field(content, field):
     """Extract a frontmatter field value."""
-    match = re.match(rf'^{field}:\s*(.+)', content, re.MULTILINE)
+    match = re.search(rf'^{field}:\s*(.+)', content, re.MULTILINE)
     return match.group(1).strip() if match else None
 
 def days_since_reviewed(filename, reviewed_data):
@@ -143,7 +143,7 @@ def generate_review_brief():
 
     if flagged_notes:
         for f, issues in flagged_notes:
-            lines.append(f"- [[{f.stem}]: {', '.join(issues)}")
+            lines.append(f"- [[{f.stem}]]: {', '.join(issues)}")
     else:
         lines.append("- All notes pass quality checks.")
 

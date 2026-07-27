@@ -42,6 +42,7 @@ import json
 import shutil
 import urllib.request
 import urllib.error
+from html.parser import HTMLParser
 from pathlib import Path
 from datetime import datetime
 
@@ -147,6 +148,8 @@ def should_run_today() -> bool:
 
 def record_run():
     """Stamp the current time as the last successful run."""
+    if DRY_RUN:
+        return  # dry runs must not disable the next real run
     import time
     LAST_RUN_FILE.parent.mkdir(parents=True, exist_ok=True)
     LAST_RUN_FILE.write_text(str(time.time()))
@@ -220,7 +223,14 @@ def extract_pdf_text(pdf_path) -> str:
 
 
 def extract_video_id(url: str):
-    """Pull a YouTube video ID out of any common URL format."""
+    """Pull a YouTube video ID out of any common URL format.
+
+    Only YouTube hosts are considered. Without this gate, any URL whose
+    final path segment is 11 chars (article slugs like 'claude-opus')
+    would false-match and get treated as a YouTube video.
+    """
+    if "youtube.com" not in url and "youtu.be/" not in url:
+        return None
     patterns = [
         r'(?:v=|/)([0-9A-Za-z_-]{11})(?:[?&#]|$)',
         r'youtu\.be/([0-9A-Za-z_-]{11})',
@@ -278,7 +288,7 @@ def fetch_github_readme(url: str) -> str:
         return url  # fall back to raw text so ingest still runs
 
     owner, repo = parts[1], parts[2]
-    repo = repo.rstrip(".git")
+    repo = repo.removesuffix(".git")
 
     for branch in ("HEAD", "main", "master"):
         raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/README.md"
@@ -298,6 +308,63 @@ def fetch_github_readme(url: str) -> str:
 
     print(f"  ⚠ Could not fetch README for {owner}/{repo} - storing URL only.")
     return f"# GitHub Repo: {owner}/{repo}\n\nSource: {url}\n\n(README not found)"
+
+
+class _HTMLTextStripper(HTMLParser):
+    """Collect visible text from an HTML page, skipping script/style blocks."""
+
+    _SKIP_TAGS = {"script", "style", "noscript", "template"}
+
+    def __init__(self):
+        super().__init__()
+        self._chunks = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in self._SKIP_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if not self._skip_depth and data.strip():
+            self._chunks.append(data.strip())
+
+    def get_text(self) -> str:
+        return "\n".join(self._chunks)
+
+
+def fetch_article_text(url: str) -> str:
+    """Fetch a web page and return its visible text, or "" if unusable.
+
+    Used for bare article URLs captured by the bookmarklet. Returns "" when
+    the fetch fails or the page yields 300 chars or less, so the caller can
+    leave the file in raw/ instead of letting the model invent a summary
+    from the URL string alone.
+    """
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "second-brain-ingest/1.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            html = resp.read().decode("utf-8", errors="ignore")
+    except Exception as e:
+        print(f"  ⚠ Could not fetch {url} ({e}) - leaving file in raw/.")
+        return ""
+
+    stripper = _HTMLTextStripper()
+    try:
+        stripper.feed(html)
+        stripper.close()
+    except Exception as e:
+        print(f"  ⚠ Could not parse HTML from {url} ({e}) - leaving file in raw/.")
+        return ""
+
+    text = stripper.get_text()
+    if len(text) <= 300:
+        print(f"  ⚠ Only {len(text)} chars extracted from {url} - leaving file in raw/.")
+        return ""
+    return text
 
 
 def is_already_ingested(video_id: str) -> bool:
@@ -369,12 +436,29 @@ def extract_content(file_path) -> str:
 
     if suffix == ".txt":
         raw = file_path.read_text(encoding="utf-8", errors="ignore").strip()
-        if "youtube.com/watch" in raw or "youtu.be/" in raw:
-            url = raw.splitlines()[0].strip()
-            return fetch_youtube_transcript(url)
-        if "github.com/" in raw:
-            url = raw.splitlines()[0].strip()
-            return fetch_github_readme(url)
+        # Dispatch on the FIRST line only. A note that merely mentions a
+        # YouTube or GitHub link in its body must keep its full text.
+        lines = raw.splitlines()
+        first = lines[0].strip() if lines else ""
+        is_bare_url = bool(re.match(r'^https?://\S+$', first))
+        if is_bare_url and ("youtube.com" in first or "youtu.be/" in first):
+            transcript = fetch_youtube_transcript(first)
+            return transcript if transcript else raw
+        if is_bare_url and "github.com/" in first:
+            readme = fetch_github_readme(first)
+            return readme if readme else raw
+        if is_bare_url:
+            # Bookmarklet drop: a bare article URL, optionally followed by the
+            # user's own notes. Fetch the real page text so the model never
+            # writes a source note from the URL string alone.
+            print(f"  ▶ Bare URL detected - fetching article text: {first}")
+            article = fetch_article_text(first)
+            if not article:
+                return ""
+            user_notes = "\n".join(lines[1:]).strip()
+            if user_notes:
+                return f"{first}\n\n{user_notes}\n\n{article}"
+            return f"{first}\n\n{article}"
         return raw
 
     return ""
@@ -641,16 +725,30 @@ def parse_response(response: str) -> list:
     return [(m[0].strip(), m[1].strip()) for m in matches]
 
 
-def write_wiki_entry(rel_path: str, content: str) -> bool:
+def write_wiki_entry(rel_path: str, content: str, replace: bool = False) -> bool:
     """
     Write a wiki entry. If file already exists, append new connections
     rather than overwriting - same rule as /second-brain-ingest skill.
+    With replace=True an existing file is rewritten outright (synthesis
+    regenerates whole files, so appending links there is a no-op).
     Returns True if a new file was created.
     """
     full_path = VAULT / rel_path
-    full_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # The model chooses rel_path and its input includes untrusted web
+    # content, so refuse anything that resolves outside the vault
+    # (absolute paths, wiki/../../ escapes).
+    resolved = full_path.resolve()
+    vault_root = VAULT.resolve()
+    if not str(resolved).startswith(str(vault_root) + os.sep):
+        print(f"  ⚠ Skipping entry outside vault: {rel_path}")
+        return False
 
     if full_path.exists():
+        if replace:
+            if not DRY_RUN:
+                full_path.write_text(content)
+            return False   # updated, not created
         existing_text = full_path.read_text()
         # Extract wikilinks from new content not already in the file
         new_links = re.findall(r'\[\[[^\]]+\]\]', content)
@@ -664,6 +762,7 @@ def write_wiki_entry(rel_path: str, content: str) -> bool:
         return False       # nothing new to add
     else:
         if not DRY_RUN:
+            full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(content)
         return True        # new file
 
@@ -934,7 +1033,7 @@ def run_synthesis():
             continue
 
         for rel_path, md_content in pairs:
-            is_new = write_wiki_entry(rel_path, md_content)
+            is_new = write_wiki_entry(rel_path, md_content, replace=True)
             status = "created" if is_new else "updated"
             print(f"    {'+' if is_new else '~'} [{status}] {rel_path}")
             if is_new:
@@ -1102,7 +1201,15 @@ def main():
         dest = PROCESSED / raw_file.name
         if not DRY_RUN:
             if dest.exists():
-                dest = PROCESSED / f"{raw_file.stem}_{datetime.now().strftime('%H%M%S')}.md"
+                # Keep the real extension and never overwrite: bump a
+                # counter until the destination name is free.
+                stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                counter = 1
+                while True:
+                    dest = PROCESSED / f"{raw_file.stem}_{stamp}_{counter}{raw_file.suffix}"
+                    if not dest.exists():
+                        break
+                    counter += 1
             shutil.move(str(raw_file), str(dest))
             print(f"  → Moved to raw/processed/")
 

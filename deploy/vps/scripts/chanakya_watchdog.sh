@@ -29,13 +29,26 @@ if [ "$ACTIVE" != 'active' ]; then
   [ "$NOW" != 'active' ] && alert "gateway down, restart failed (=$NOW)"
 fi
 
+# 2b. Watcher alive? (SYSTEM unit, not --user)
+WSVC=secondbrain-watcher
+WACTIVE=$(systemctl is-active "$WSVC" 2>/dev/null)
+if [ "$WACTIVE" != 'active' ]; then
+  note "WARN watcher=$WACTIVE — restarting"; systemctl restart "$WSVC" 2>/dev/null; sleep 5
+  WNOW=$(systemctl is-active "$WSVC" 2>/dev/null); note "INFO watcher post-restart=$WNOW"
+  [ "$WNOW" != 'active' ] && alert "watcher down, restart failed (=$WNOW)"
+fi
+
 # 3. Ingest stalled? (files stuck in raw/ >20min and nothing ingesting) -> kick sweep + alert
-STUCK=$(find "$VAULT/raw" -maxdepth 1 -name '*.md' -mmin +20 2>/dev/null | wc -l)
+STUCK=$(find "$VAULT/raw" -maxdepth 1 \( -name '*.md' -o -name '*.txt' -o -name '*.pdf' \) -mmin +20 2>/dev/null | wc -l)
 ING=$(pgrep -f 'scripts/sb_ingest.sh' 2>/dev/null | wc -l)
 if [ "$STUCK" -gt 0 ] && [ "$ING" -eq 0 ]; then
   /root/SecondBrain/scripts/sb_retry_sweep.sh >/dev/null 2>&1 &
   alert "ingest stalled: $STUCK file(s) stuck in raw/ >20min — kicked retry sweep"
 fi
+
+# 3b. Quarantined files? (sb_ingest moves a file to raw/failed/ after 3 failed attempts)
+QUAR=$(find "$VAULT/raw/failed" -maxdepth 1 -type f 2>/dev/null | wc -l)
+[ "$QUAR" -gt 0 ] && alert "$QUAR file(s) quarantined in raw/failed/ after repeated ingest failures"
 
 
 # 4. Stale-code / ImportError self-heal (Hermes edits its own core while running ->

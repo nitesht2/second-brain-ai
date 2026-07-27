@@ -24,6 +24,7 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | `scripts/run_brain_skill.sh` | `/root/.hermes/scripts/` | Pacific/DST-safe skill runner + Discord delivery |
 | `scripts/chanakya_watchdog.sh` | `/root/.hermes/scripts/` | 5-min gateway/token health check + auto-restart |
 | `scripts/vault_backup.sh` | `/root/.hermes/scripts/` | daily vault commit + push to GitHub |
+| `scripts/wiki_sanitize.sh` | `/root/.hermes/scripts/` | strips stray leading pipes from `wiki/index.md` + `wiki/log.md` (called by `sb_ingest.sh`, `run_brain_skill.sh`, `vault_backup.sh`) |
 | `scripts/doc2md.py` | `<vault>/scripts/` | size-aware doc→Markdown: small → `raw/`; large (book/long file) → chapter chunks staged under `_staging/<slug>/` |
 | `scripts/book_drip.sh` | `/root/.hermes/scripts/` | idle-aware feeder: drips staged chunks from `_staging/` into `raw/` one at a time |
 | `hardened/` (dir) | `/etc/systemd/system/` + gateway `.d/` drop-in | **Security hardening** for the units above — de-caps root + filesystem-confines the agent (blast-radius cut for prompt-injection). Opt-in; see [`hardened/README.md`](hardened/README.md). |
@@ -197,6 +198,7 @@ Install the driver, then add the cron block:
 
 ```bash
 cp deploy/vps/scripts/run_brain_skill.sh /root/.hermes/scripts/ && chmod +x /root/.hermes/scripts/run_brain_skill.sh
+cp deploy/vps/scripts/wiki_sanitize.sh /root/.hermes/scripts/ && chmod +x /root/.hermes/scripts/wiki_sanitize.sh
 
 crontab -e   # add the block below
 ```

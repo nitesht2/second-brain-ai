@@ -31,7 +31,7 @@ AmbientCapabilities=
 # self-editing its installed code. That is GOOD security (stops self-modifying
 # code), but if Hermes errors on it see hardened/README.md "self-edit" note.
 ProtectSystem=strict
-ReadWritePaths=/root/SecondBrain /root/.hermes
+ReadWritePaths=/root/SecondBrain /root/.hermes /root/.cache
 
 # Hide other users'/processes' /proc entries from the agent.
 ProtectProc=invisible

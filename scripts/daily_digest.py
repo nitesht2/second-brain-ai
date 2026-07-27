@@ -57,11 +57,11 @@ def get_github_trending():
                     items.append({
                         "name": repo["full_name"],
                         "url": repo["html_url"],
-                        "desc": repo.get("description", "")[:200],
+                        "desc": (repo.get("description") or "")[:200],
                         "stars": repo.get("stargazers_count", 0)
                     })
-        except:
-            pass
+        except Exception as e:
+            print(f"warn: github trending query {q!r} failed: {e}", file=sys.stderr)
     # Deduplicate by url
     seen = set()
     unique = []
@@ -95,8 +95,8 @@ def get_hn_stories():
                     })
                     if len(items) >= 5:
                         break
-    except:
-        pass
+    except Exception as e:
+        print(f"warn: HN story fetch failed: {e}", file=sys.stderr)
     return items
 
 # ── OpenRouter Models (API) ────────────────────────────────────────────
@@ -118,8 +118,8 @@ def get_openrouter_models():
                     "url": f"https://openrouter.ai/{name}"
                 })
             return new_models[:5]
-    except:
-        pass
+    except Exception as e:
+        print(f"warn: OpenRouter model fetch failed: {e}", file=sys.stderr)
     return []
 
 def main():

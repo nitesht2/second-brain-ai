@@ -6,9 +6,10 @@
 VAULT="$HOME/SecondBrain"
 RAW_DIR="$VAULT/raw"
 HERMES_BIN="$HOME/.local/bin/hermes"
+LOG="$VAULT/outputs/watcher.log"
 
 # Ensure vault exists
-mkdir -p "$RAW_DIR"
+mkdir -p "$RAW_DIR" "$VAULT/outputs"
 
 # Watch for new files and trigger ingest
 fswatch -0 "$RAW_DIR" | while read -d "" event; do
@@ -30,11 +31,11 @@ fswatch -0 "$RAW_DIR" | while read -d "" event; do
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] New file detected: $filename"
 
     # Create kanban task if hermes is available
+    # CLI form: hermes kanban [--board <slug>] create [--body ...] [--assignee ...] <title>
     if [ -f "$HERMES_BIN" ]; then
-        "$HERMES_BIN" kanban create \
-            --board secondbrain \
-            --title "Ingest: $filename" \
-            --description "Auto-detected file in raw/. Process and extract into wiki." \
-            --assignee secondbrain-agent 2>/dev/null || true
+        "$HERMES_BIN" kanban --board secondbrain create "Ingest: $filename" \
+            --body "Auto-detected file in raw/: $filename" \
+            --assignee secondbrain-agent >>"$LOG" 2>&1 \
+            || echo "kanban create failed for $filename" >>"$LOG"
     fi
 done

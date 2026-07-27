@@ -9,7 +9,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/python3</string>
-        <string>$HOME/SecondBrain/brain_server.py</string>
+        <string>/Users/YOUR_USER/SecondBrain/brain_server.py</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -18,10 +18,10 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>$HOME/SecondBrain/outputs/server.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/server.log</string>
 
     <key>StandardErrorPath</key>
-    <string>$HOME/SecondBrain/outputs/server.log</string>
+    <string>/Users/YOUR_USER/SecondBrain/outputs/server.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>

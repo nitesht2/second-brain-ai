@@ -17,6 +17,6 @@ rsync -a --exclude 'raw/processed/' --exclude 'outputs/' --exclude '.obsidian/' 
 
 echo "✅ Backed up to $DEST"
 
-# Keep only last 30 backups
-ls -dt "$BACKUP_DIR"/vault-* 2>/dev/null | tail -n +31 | xargs rm -rf 2>/dev/null || true
+# Keep only last 30 backups (null-delimited so paths with spaces survive xargs)
+ls -dt "$BACKUP_DIR"/vault-* 2>/dev/null | tail -n +31 | tr '\n' '\0' | xargs -0 rm -rf 2>/dev/null || true
 echo "📦 $(ls "$BACKUP_DIR" | wc -l) backups retained"
