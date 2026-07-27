@@ -345,9 +345,13 @@ def ingest_url(url: str, kind: str, dry_run: bool) -> bool:
         return True
 
     timeout = 1800 if tool is CLIP else 600  # clip (CPU whisper) is the slow path
+    # Bookmarked urls are attacker-chosen, and doc2md's headless-browser fallback
+    # follows redirects without vetting them (blind SSRF against this box). Turn
+    # it off for this path; manual doc2md runs keep rendering.
+    env = {**os.environ, "SB_NO_RENDER": "1"}
     try:
         res = subprocess.run([TOOL_PYTHON, str(tool), url],
-                             capture_output=True, text=True, timeout=timeout)
+                             capture_output=True, text=True, timeout=timeout, env=env)
     except subprocess.TimeoutExpired:
         print(f"  FAIL[timeout {timeout}s] {tool.name}: {url}")
         return False  # transient -> retry next run

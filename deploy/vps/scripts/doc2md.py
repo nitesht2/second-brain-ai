@@ -27,6 +27,16 @@ MIN_ARTICLE_CHARS=300   # trafilatura result shorter than this = "thin" -> try r
 MAX_REDIRECTS=5
 FETCH_TIMEOUT=120
 
+# The urllib path above vets every hop. The LightPanda render fallback cannot:
+# it follows 30x itself and ignores Playwright's route interceptor, so the only
+# thing stopping it is a post-goto landing-url check, i.e. after the internal
+# GET already happened. Content cannot leak, but a crafted bookmark can still
+# make this box hit an internal URL (blind SSRF). Callers handling untrusted
+# input set SB_NO_RENDER=1 to switch the fallback off; manual clips, where the
+# operator chose the url, keep it. Closing this properly means confining the
+# browser at the network layer (netns/firewall), not in Python.
+NO_RENDER=os.environ.get('SB_NO_RENDER','').strip() not in ('','0','false','no')
+
 def _public_ip(url):
     """Vet url; return one resolved global IP to pin. Raises URLError otherwise."""
     p=urllib.parse.urlparse(url)
@@ -116,6 +126,8 @@ def _port_ready(proc, port, timeout=8):
 def _render_html(url):
     """Render a JS page with LightPanda over CDP; return HTML or None. Lazy: only
     spawned when trafilatura's plain fetch came back thin."""
+    if NO_RENDER:
+        sys.stderr.write('render fallback disabled (SB_NO_RENDER) for untrusted url\n'); return None
     try: _public_ip(url)
     except Exception as e:
         sys.stderr.write('refusing render of unsafe url: %r\n'%e); return None
