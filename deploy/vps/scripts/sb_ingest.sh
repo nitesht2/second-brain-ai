@@ -19,10 +19,18 @@ cd "$V" || exit 1
 timeout 600 "$HB" -p secondbrain-agent -z "$PROMPT" --skill llm-wiki --yolo >>"$LOG" 2>&1
 rc=$?
 [ -x /root/.hermes/scripts/wiki_sanitize.sh ] && /root/.hermes/scripts/wiki_sanitize.sh || echo "$(ts) WARN wiki_sanitize.sh missing" >>"$LOG"
-if [ ! -f "$RAW/$F" ]; then
+# Success needs BOTH: the agent exited clean AND the file left raw/. Checking
+# only the file logged "OK (rc=1)" whenever a failed run still moved it, which
+# is how 9 days of dead-provider failures read as successes.
+if [ ! -f "$RAW/$F" ] && [ "$rc" -eq 0 ]; then
   echo "$(ts) OK $F (rc=$rc -> processed)" >>"$LOG"
   rm -f "$ATTEMPTS/$F.count"
   exit 0
+fi
+if [ ! -f "$RAW/$F" ]; then   # gone but rc!=0: agent moved it then failed
+  echo "$(ts) MOVED-BUT-FAILED $F (rc=$rc; check raw/processed/)" >>"$LOG"
+  rm -f "$ATTEMPTS/$F.count"
+  exit 1
 fi
 # still in raw/ -> failed attempt; cap retries, quarantine after 3
 mkdir -p "$ATTEMPTS"
