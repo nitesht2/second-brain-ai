@@ -1,0 +1,11 @@
+[Unit]
+Description=Timer: Second Brain outcome check (09:00 America/Los_Angeles)
+
+[Timer]
+# Morning, so a failure surfaces at the start of the day rather than overnight.
+# After the 04:00 reindex and the 06:00 harvest, so it judges fresh results.
+OnCalendar=*-*-* 09:00:00 America/Los_Angeles
+Persistent=true
+
+[Install]
+WantedBy=timers.target
