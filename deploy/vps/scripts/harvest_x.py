@@ -12,8 +12,15 @@ Quoted tweets, t.co self-refs and pic.* media are dropped. Dedup is tracked in a
 seen-file so re-runs only ingest what's new.
 
 PREREQUISITE - reads need OAuth2/OAuth1 *user context* (app-only bearer 403s on bookmarks).
-The deployed xurl default already resolves to the authed user; otherwise:
-    xurl auth oauth2 --app <app> --scope "bookmark.read like.read tweet.read users.read"
+The deployed xurl default already resolves to the authed user. To re-auth (the token
+expires and every run then fails with an EMPTY message, since xurl writes the 401 body
+to stdout and this script only reports stderr):
+    xurl auth oauth2 <USERNAME> --app <app>
+Scopes are compiled into xurl; there is no --scope flag on 1.x. Run it ON the box that
+needs the token: the OAuth callback wants localhost:8080, so open `ssh -L
+8080:localhost:8080 vps` FIRST and run the command inside that session. If the tunnel
+says "Address already in use" it did not attach, an older tunnel owns port 8080; kill
+that one first or the browser callback lands nowhere. Verify with `xurl /2/users/me`.
 
 Modes:
     harvest_x.py --backfill              # paginate ALL bookmarks (first import)
