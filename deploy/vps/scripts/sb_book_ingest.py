@@ -267,7 +267,10 @@ def _epub_title(path: Path) -> str | None:
         a = (root.findtext(".//dc:creator", namespaces=ns) or "").strip()
     except Exception:
         return None
-    if not t:
+    # Metadata is not automatically better than the filename: some epubs carry an
+    # ASIN or ISBN as dc:title (B000YIWF4C EBOK), in which case the stem is the
+    # real title. Reject those and let the caller fall through.
+    if not t or re.fullmatch(r"[0-9A-Z]{6,}(\s+EBOK)?", t.strip()):
         return None
     if ":" in t and len(t) > 60:
         t = t.split(":", 1)[0]
