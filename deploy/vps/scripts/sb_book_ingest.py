@@ -20,6 +20,7 @@ Env: SB_VAULT (default /root/SecondBrain), SB_CLAUDE (default /usr/local/bin/cla
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
 import re
 import subprocess
@@ -199,11 +200,16 @@ def ingest_one(path: Path, chunk_words: int, dry_run: bool) -> bool:
         return False
     log(f"notes: {notes_file.name} ({sum(len(c.split()) for c in collected):,} words from {words:,})")
 
-    log("synthesizing into the vault")
-    ok, out = run_claude(
-        REDUCE_PROMPT.format(title=title, words=words, n=len(collected)),
-        REDUCE_TIMEOUT, "Read Write Edit Glob Grep", body="\n\n".join(collected),
-    )
+    # The reduce pass writes wiki pages, index.md and log.md, the same files the
+    # watcher's sb_ingest.sh and vault_backup.sh touch. Every other writer takes
+    # this lock; without it a book landing mid-ingest corrupts the shared index.
+    log("synthesizing into the vault (waiting for the ingest lock)")
+    with open(VAULT / ".ingest.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        ok, out = run_claude(
+            REDUCE_PROMPT.format(title=title, words=words, n=len(collected)),
+            REDUCE_TIMEOUT, "Read Write Edit Glob Grep", body="\n\n".join(collected),
+        )
     if not ok:
         log("  ALERT synthesis failed, notes kept for a retry")
         return False
