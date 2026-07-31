@@ -244,6 +244,10 @@ Your notes from all {n} passes arrive on stdin."""
 
 READABLE = (".epub", ".pdf", ".txt", ".md", ".docx", ".html")
 
+# Books whose title collides with another edition on the same shelf, resolved to a
+# year-suffixed title by the folder pass so neither edition is dropped.
+TITLE_OVERRIDE: dict[Path, str] = {}
+
 
 def _epub_title(path: Path) -> str | None:
     """dc:title (+ dc:creator) from the OPF. None for non-epub or on any failure."""
@@ -267,30 +271,47 @@ def _epub_title(path: Path) -> str | None:
     return f"{t} - {a}" if a else t
 
 
-def title_of(path: Path) -> str:
+def title_of(path: Path, disambiguate: bool = False) -> str:
     """The file stem is not a title. Calibre exports arrive truncated at 30 chars,
     colon-mangled into underscores, or as a bare ISBN. Prefer embedded metadata,
     then the containing folder, then the stem."""
     meta = _epub_title(path)
     if meta:
+        if disambiguate:
+            year = re.search(r"\((\d{4})\)", path.stem)
+            if year:
+                return f"{meta} ({year.group(1)})"
         return meta
     stem = re.sub(r"\s*\(\d{4}\)\s*$", "", path.stem).strip()
-    if re.fullmatch(r"[0-9A-Z]{6,}", stem) or len(stem) in (30, 31):
+    # Only an ISBN-shaped stem justifies falling back to the folder. A length test
+    # cannot tell a truncated title from a real one: "Financial Analysis Using
+    # Excel" is exactly 30 characters and is not truncated.
+    if re.fullmatch(r"[0-9A-Z]{6,}", stem):
         stem = re.sub(r"\s*\(\d{4}\)\s*$", "", path.parent.name).strip()
-    return stem.replace("_s ", "'s ").replace("_ ", ": ").replace(":", " -").strip()
+    out = re.sub(r"\s+", " ", stem.replace("_s ", "'s ").replace("_ ", ": ")
+                 .replace(":", " -")).strip()
+    if disambiguate:
+        year = re.search(r"\((\d{4})\)", path.stem)
+        if year:
+            out = f"{out} ({year.group(1)})"
+    return out
 
 
-def done_marker(title: str) -> Path:
-    return NOTES_DIR / f"{re.sub(r'[^\w -]', '', title)[:60]}.done"
+def done_marker(path: Path) -> Path:
+    """Keyed on the file, not the title. Titles are derived and the derivation
+    changes; a marker that moves when the naming rule improves silently re-ingests
+    everything already done."""
+    key = hashlib.md5(f"{path.name}:{path.stat().st_size}".encode()).hexdigest()[:16]
+    return NOTES_DIR / f"{key}.done"
 
 
-def already_done(title: str) -> bool:
+def already_done(path: Path) -> bool:
     """Set only after the reduce pass returned success.
 
     Keying on the source page was wrong: it lands ~178s into a ~451s reduce, so a
     reduce dying in the last 61% left a half-written book that a re-run then skipped.
     """
-    return done_marker(title).exists()
+    return done_marker(path).exists()
 
 
 def open_decisions() -> str:
@@ -304,7 +325,7 @@ def open_decisions() -> str:
 
 
 def ingest_one(path: Path, chunk_words: int, dry_run: bool) -> bool:
-    title = title_of(path)
+    title = TITLE_OVERRIDE.get(path) or title_of(path)
     log(f"extracting {path.name}")
     try:
         text = extract(path)
@@ -372,7 +393,7 @@ def ingest_one(path: Path, chunk_words: int, dry_run: bool) -> bool:
         log(f"  repaired wrapped wikilinks in {fixed_pages} page(s)")
 
     print(out[-2000:] if out else "(no output)")
-    done_marker(title).write_text("ok\n", encoding="utf-8")
+    done_marker(path).write_text(f"{title}\n", encoding="utf-8")
     log(f"done: {title}")
     return True
 
@@ -415,18 +436,18 @@ def main() -> int:
             books.remove(p)
             continue
         seen[h] = p
-    by_title: dict[str, Path] = {}
+    # Same title with different bytes is usually a different edition, not a
+    # duplicate. Dropping one loses a book; disambiguate with the year instead.
+    by_title: dict[str, list[Path]] = {}
     for p in books:
-        t = title_of(p)
-        if t in by_title:
-            keep = max(by_title[t], p, key=lambda q: q.stat().st_size)
-            log(f"  same title {t!r}: keeping {keep.name}")
-            by_title[t] = keep
-            continue
-        by_title[t] = p
-    books = sorted(by_title.values())
+        by_title.setdefault(title_of(p), []).append(p)
+    ambiguous = {t for t, g in by_title.items() if len(g) > 1}
+    for t in sorted(ambiguous):
+        log(f"  {len(by_title[t])} editions share the title {t!r}, keeping all, year appended")
+    TITLE_OVERRIDE.update({p: title_of(p, disambiguate=True)
+                           for t in ambiguous for p in by_title[t]})
 
-    skipped = [p for p in books if not args.redo and already_done(title_of(p))]
+    skipped = [p for p in books if not args.redo and already_done(p)]
     todo = [p for p in books if p not in skipped]
     if args.limit:
         todo = todo[: args.limit]
