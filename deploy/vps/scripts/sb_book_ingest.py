@@ -24,6 +24,7 @@ import fcntl
 import hashlib
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -79,21 +80,48 @@ def chunk(text: str, size: int) -> list[str]:
     return splitter.split_text(text)
 
 
+_ACTIVE: subprocess.Popen | None = None
+
+
+def _stop_child(signum, _frame):
+    """Killing the parent must kill the claude child.
+
+    subprocess leaves the child running when the parent dies, so a stopped run
+    kept writing the vault for another nine minutes with nobody holding the
+    ingest lock, which the parent released on exit. Observed 2026-07-31.
+    """
+    if _ACTIVE and _ACTIVE.poll() is None:
+        _ACTIVE.terminate()
+        try:
+            _ACTIVE.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            _ACTIVE.kill()
+    sys.exit(143)
+
+
 def run_claude(prompt: str, timeout: int, tools: str, body: str | None = None) -> tuple[bool, str]:
     """Run one claude -p pass. Bulk text goes on stdin, never argv.
 
     A 25k-word chunk is ~150KB, well past ARG_MAX, so passing it as an argument
     fails with 'Argument list too long' before claude even starts.
     """
+    global _ACTIVE
+    proc = subprocess.Popen(
+        [CLAUDE, "-p", prompt, "--allowedTools", *tools.split(),
+         "--permission-mode", "acceptEdits"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, cwd=str(VAULT),
+    )
+    _ACTIVE = proc
     try:
-        res = subprocess.run(
-            [CLAUDE, "-p", prompt, "--allowedTools", *tools.split(),
-             "--permission-mode", "acceptEdits"],
-            input=body, capture_output=True, text=True, timeout=timeout, cwd=str(VAULT),
-        )
+        out, err = proc.communicate(input=body, timeout=timeout)
     except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()
         return False, f"timed out after {timeout}s"
-    return res.returncode == 0, (res.stdout or res.stderr or "").strip()
+    finally:
+        _ACTIVE = None
+    return proc.returncode == 0, (out or err or "").strip()
 
 
 # ── map: read a chunk, keep only what survives summarizing ─────────────────
@@ -421,6 +449,8 @@ def ingest_one(path: Path, chunk_words: int, dry_run: bool) -> bool:
 
 
 def main() -> int:
+    for _sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(_sig, _stop_child)
     ap = argparse.ArgumentParser(description="Ingest a book as one synthesis, not many fragments.")
     ap.add_argument("book", nargs="?", help="a single book file")
     ap.add_argument("--folder", help="walk a directory and ingest each book in turn")
