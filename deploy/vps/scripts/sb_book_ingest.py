@@ -34,7 +34,10 @@ from pathlib import Path
 VAULT = Path(os.environ.get("SB_VAULT", "/root/SecondBrain"))
 CLAUDE = os.environ.get("SB_CLAUDE", "/usr/local/bin/claude")
 NOTES_DIR = VAULT / "outputs" / "book-notes"
-CHUNK_WORDS = 25_000        # ~33k tokens, comfortably inside one pass
+CHUNK_WORDS = 45_000        # ~60k tokens, still well inside one pass
+# 25k was already 7x the old doc2md sizing and left most of the window unused. At 45k
+# a 270k-word book is 7 passes instead of 16, which roughly halves the map phase. The
+# reduce phase is unchanged and dominates total runtime either way.
 MAP_TIMEOUT = 900
 REDUCE_TIMEOUT = 1800
 
@@ -96,9 +99,11 @@ def run_claude(prompt: str, timeout: int, tools: str, body: str | None = None) -
 # ── map: read a chunk, keep only what survives summarizing ─────────────────
 MAP_PROMPT = """You are reading part {i} of {n} of "{title}".
 
-Pull out only what would still matter to someone a year from now. Be ruthless: a
-chunk of a book usually contains two or three ideas worth keeping and a lot of
-elaboration around them.
+Pull out only what would still matter to someone a year from now. Be ruthless: most
+of a book is elaboration around a much smaller number of real ideas, and this is a
+long stretch of one, so expect to discard the majority of what you read. Do not pad
+toward a quota, and do not compress so hard that a distinct idea is lost because a
+neighbouring one was stronger.
 
 Return plain markdown, no preamble:
 
@@ -297,12 +302,22 @@ def title_of(path: Path, disambiguate: bool = False) -> str:
     return out
 
 
+def skip_marker(path: Path) -> Path:
+    """Set when a book cannot be read at all. Extraction is deterministic, so
+    retrying costs a --limit slot every run and never succeeds; without this one
+    unparseable PDF sits at the head of the queue forever."""
+    return NOTES_DIR / f"{_file_key(path)}.skip"
+
+
+def _file_key(path: Path) -> str:
+    return hashlib.md5(f"{path.name}:{path.stat().st_size}".encode()).hexdigest()[:16]
+
+
 def done_marker(path: Path) -> Path:
     """Keyed on the file, not the title. Titles are derived and the derivation
     changes; a marker that moves when the naming rule improves silently re-ingests
     everything already done."""
-    key = hashlib.md5(f"{path.name}:{path.stat().st_size}".encode()).hexdigest()[:16]
-    return NOTES_DIR / f"{key}.done"
+    return NOTES_DIR / f"{_file_key(path)}.done"
 
 
 def already_done(path: Path) -> bool:
@@ -311,7 +326,7 @@ def already_done(path: Path) -> bool:
     Keying on the source page was wrong: it lands ~178s into a ~451s reduce, so a
     reduce dying in the last 61% left a half-written book that a re-run then skipped.
     """
-    return done_marker(path).exists()
+    return done_marker(path).exists() or skip_marker(path).exists()
 
 
 def open_decisions() -> str:
@@ -331,10 +346,14 @@ def ingest_one(path: Path, chunk_words: int, dry_run: bool) -> bool:
         text = extract(path)
     except Exception as exc:  # noqa: BLE001 - one bad book must not stop a folder run
         log(f"  SKIP unreadable ({type(exc).__name__}: {exc})")
+        NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        skip_marker(path).write_text(f"{path.name}: {type(exc).__name__}\n", encoding="utf-8")
         return False
     words = len(text.split())
     if words < 2000:
         log(f"  SKIP only {words} words, looks scanned or empty (try ocrmypdf)")
+        NOTES_DIR.mkdir(parents=True, exist_ok=True)
+        skip_marker(path).write_text(f"{path.name}: only {words} words\n", encoding="utf-8")
         return False
 
     chunks = chunk(text, chunk_words)
