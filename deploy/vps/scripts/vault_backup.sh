@@ -23,6 +23,15 @@ AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
 if git diff --cached --quiet 2>/dev/null && [ "${AHEAD:-0}" -eq 0 ]; then
   echo "$(ts) no changes" >> "$LOG"; exit 0
 fi
+# Commit BEFORE rebasing. `git pull --rebase` refuses to run with a dirty index,
+# so rebasing first fails in exactly the one situation the rebase exists for:
+# local work staged AND the remote moved. On 2026-08-02 the Mac pushed, and every
+# run from then on aborted here with 14 pages of wiki work staged but never
+# committed, logging ALERT and exiting 0 so systemd recorded a success.
+if ! git diff --cached --quiet 2>/dev/null; then
+  git commit -m "Auto-backup: $(ts)" >/dev/null 2>&1 \
+    || { echo "$(ts) ALERT commit failed (git identity? staged state kept)" >> "$LOG"; exit 1; }
+fi
 # Diverged remote (the Mac pushes to this repo too) rejects a plain push, so
 # replay our commits on top before trying. Conflicts abort rather than guess.
 if [ "$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)" -gt 0 ]; then
@@ -30,20 +39,10 @@ if [ "$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)" -gt 0 ]; 
         pull --rebase origin main >/dev/null 2>&1; then
     git rebase --abort >/dev/null 2>&1
     echo "$(ts) ALERT remote diverged and rebase failed, manual merge needed" >> "$LOG"
-    exit 0
+    exit 1
   fi
   echo "$(ts) rebased onto origin/main before push" >> "$LOG"
 fi
-if git diff --cached --quiet 2>/dev/null; then   # nothing new, just a stranded push to retry
-  if git push origin HEAD:main >/dev/null 2>&1; then
-    echo "$(ts) pushed backlog $(git rev-parse --short HEAD)" >> "$LOG"
-  else
-    echo "$(ts) ALERT retry of stranded push failed" >> "$LOG"
-  fi
-  exit 0
-fi
-git commit -m "Auto-backup: $(ts)" >/dev/null 2>&1 \
-  || { echo "$(ts) ALERT commit failed (git identity? staged state kept)" >> "$LOG"; exit 0; }
 # HEAD:main pushes the commit we just made even if HEAD sits on another branch
 if git push origin HEAD:main >/dev/null 2>&1; then
   git fetch origin main >/dev/null 2>&1
@@ -54,5 +53,6 @@ if git push origin HEAD:main >/dev/null 2>&1; then
   fi
 else
   echo "$(ts) ALERT push failed (commit $(git rev-parse --short HEAD) local-only)" >> "$LOG"
+  exit 1
 fi
 exit 0
