@@ -12,15 +12,28 @@ Quoted tweets, t.co self-refs and pic.* media are dropped. Dedup is tracked in a
 seen-file so re-runs only ingest what's new.
 
 PREREQUISITE - reads need OAuth2/OAuth1 *user context* (app-only bearer 403s on bookmarks).
-The deployed xurl default already resolves to the authed user. To re-auth (the token
-expires and every run then fails with an EMPTY message, since xurl writes the 401 body
-to stdout and this script only reports stderr):
-    xurl auth oauth2 <USERNAME> --app <app>
-Scopes are compiled into xurl; there is no --scope flag on 1.x. Run it ON the box that
-needs the token: the OAuth callback wants localhost:8080, so open `ssh -L
-8080:localhost:8080 vps` FIRST and run the command inside that session. If the tunnel
-says "Address already in use" it did not attach, an older tunnel owns port 8080; kill
-that one first or the browser callback lands nowhere. Verify with `xurl /2/users/me`.
+The deployed xurl default already resolves to the authed user.
+
+Access tokens live ~2h and xurl refreshes them silently, so a healthy box refreshes
+several times a day and you never touch it. What actually breaks is the REFRESH CHAIN:
+X rotates refresh tokens, each use invalidates the previous one, and only an interactive
+re-auth recovers. Two things break the chain, and both have bitten this box:
+  - two processes refreshing at once (fixed: every caller takes XURL_LOCK)
+  - two MACHINES holding the same token file (fixed: the VPS is the only holder)
+
+RE-AUTH, in order. Do it on the Mac; the callback wants a browser on localhost:8080,
+which a headless VPS does not have. Tunnelling the port back was tried and is fragile
+("Address already in use" means an older tunnel owns 8080 and the callback lands
+nowhere), so authenticate locally and ship the file instead:
+    1. on the Mac:   xurl auth oauth2 <USERNAME> --app <app>
+    2. verify:       xurl /2/users/me
+    3. ship it:      scp ~/.xurl vps:/root/.xurl
+    4. IMPORTANT:    xurl auth clear --oauth2-username <USERNAME> --app <app>
+Step 4 is what keeps this from recurring. It is local-only (verified: it does not revoke
+server-side, the VPS token keeps working) and it leaves the app registration intact, so
+the next re-auth is still one command. Skipping it leaves two machines holding the same
+rotating token, and the first one to refresh silently kills the other.
+Scopes are compiled into xurl; there is no --scope flag on 1.x.
 
 Modes:
     harvest_x.py --backfill              # paginate ALL bookmarks (first import)
@@ -137,14 +150,30 @@ def save_seen(source: str, data: dict) -> None:
 
 
 # ── xurl wrapper (retry/backoff for unattended runs) ───────────────────────
+# X rotates refresh tokens: every refresh returns a NEW one and invalidates the
+# old, which is why xurl rewrites the whole ~/.xurl on refresh rather than just
+# the access token. Access tokens live ~2h, so any unattended run is refreshing
+# constantly. Two processes refreshing from the same file at once means the
+# second presents an already-spent refresh token, the chain breaks, and only an
+# interactive re-auth recovers it. That is the 2026-07-17 and 2026-08-04 outage.
+# Three programs on this box share the file (harvest_x.py, sb_outcome_check.sh,
+# pull_ripster.py), so every xurl call is serialized on one lock.
+XURL_LOCK = Path(os.environ.get("SB_XURL_LOCK", Path.home() / ".xurl.lock"))
+
+
 def xurl_get(path: str, retries: int = 4) -> dict:
     """Call `xurl <path>`, parse JSON. Retries transient failures (timeout,
     empty body, 429) with bounded exponential backoff. xurl injects auth from
-    ~/.xurl and prints raw API JSON to stdout."""
+    ~/.xurl and prints raw API JSON to stdout.
+
+    Holds XURL_LOCK for the duration so a concurrent caller cannot spend the
+    same rotating refresh token."""
     delay = 5
     for attempt in range(retries + 1):
         try:
-            res = subprocess.run(["xurl", path], capture_output=True, text=True, timeout=60)
+            with open(XURL_LOCK, "a") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                res = subprocess.run(["xurl", path], capture_output=True, text=True, timeout=60)
         except subprocess.TimeoutExpired:
             if attempt == retries:
                 raise RuntimeError(f"xurl timed out after {retries + 1} attempts: {path}")
