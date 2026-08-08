@@ -13,6 +13,9 @@ Full plan + rationale: `../../docs/VPS_DEPLOYMENT.md`.
 | File | Goes to | Purpose |
 |------|---------|---------|
 | `sb_watcher.sh` | `/root/SecondBrain/scripts/` | inotify on `raw/` → calls `sb_ingest.sh` directly (kanban-free) |
+| `sb_journal_watcher.sh` | `/root/SecondBrain/scripts/` | inotify on `journal/inbox/` → transcribes voice memos into the **private** journal (never touches the wiki) |
+| `scripts/voice_journal.py` | `<vault>/scripts/` | audio memo → faster-whisper transcript → dated entry in `journal/<date>.md` (also runnable by hand) |
+| `secondbrain-journal.service` | `/etc/systemd/system/` | runs the journal watcher (Restart=always) |
 | `scripts/sb_ingest.sh` | `<vault>/scripts/` | ingest ONE raw file via the agent, `flock`-serialized + timeout (the ingest worker) |
 | `scripts/sb_retry_sweep.sh` | `<vault>/scripts/` | cron `*/15`: re-ingest any file lingering in `raw/` (failed/missed) |
 | `secondbrain-watcher.service` | `/etc/systemd/system/` | runs the watcher (Restart=always) |
@@ -350,6 +353,52 @@ with zero impact on day-to-day capture. Progress logs to `outputs/book_feed.log`
 
 > Limits: text + tables convert well; embedded images/diagrams are **not** described
 > (no vision step wired); URLs inside the file are recorded as text, not auto-fetched.
+
+## Voice journal (private transcription lane)
+
+A second capture lane for **journaling, affirmations, and manifestation** —
+deliberately separate from the wiki. Voice memos dropped here are transcribed
+into a private dated journal and are **never ingested, cross-linked, or sent to
+the wiki agent**. Different drop zone (`journal/inbox/`, not `raw/`), different
+watcher, no agent in the loop — just faster-whisper.
+
+```
+record memo → journal/inbox/<audio>
+   → sb_journal_watcher.sh (inotify) → voice_journal.py (faster-whisper, CPU int8)
+   → journal/<YYYY-MM-DD>.md (timestamped block) → audio → journal/processed/
+```
+
+Reuses the `faster-whisper` dep already installed for `clip.py` — no new
+packages. Install:
+
+```bash
+cp deploy/vps/scripts/voice_journal.py /root/SecondBrain/scripts/ && chmod +x /root/SecondBrain/scripts/voice_journal.py
+cp deploy/vps/sb_journal_watcher.sh /root/SecondBrain/scripts/ && chmod +x /root/SecondBrain/scripts/sb_journal_watcher.sh
+cp deploy/vps/secondbrain-journal.service /etc/systemd/system/
+mkdir -p /root/SecondBrain/journal/inbox /root/SecondBrain/journal/processed
+systemctl daemon-reload && systemctl enable --now secondbrain-journal
+```
+
+**Getting audio into `journal/inbox/`** is transport-agnostic — pick whatever
+fits your phone: a voice-memo folder synced via Syncthing, a downloaded Discord
+voice message, AirDrop to a synced dir, or plain `scp memo.m4a vps:/root/SecondBrain/journal/inbox/`.
+Any `.m4a/.mp3/.wav/.ogg/.opus/.aac/.flac/.mp4/.webm/.3gp` is picked up.
+
+Manual / test runs (no watcher needed):
+
+```bash
+/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/voice_journal.py ~/memo.m4a
+/root/SecondBrain/.venv/bin/python /root/SecondBrain/scripts/voice_journal.py --inbox   # drain the inbox
+```
+
+Model defaults to multilingual `base` (so non-English affirmations transcribe);
+override with `VOICE_JOURNAL_MODEL=base.en` (English-only, faster) or `--model small`
+(more accurate, slower). Logs to `outputs/journal.log`.
+
+> Privacy: journal entries live only in your vault. If you back the vault up to
+> GitHub (`vault_backup.sh`), the journal goes with it — point that at a
+> **private** repo, or add `journal/` to the vault's `.gitignore` to keep
+> reflections off the remote entirely.
 
 ## Mac-free clipping via residential proxy
 
