@@ -46,3 +46,4 @@ trafilatura>=2.0
 # searches it. obsidian_mcp.py's search_vault is hybrid (keyword + semantic). Refreshed
 # nightly by the brain-semantic-reindex.timer (04:00 PT). numpy + onnxruntime are deps.
 fastembed>=0.4
+langchain-text-splitters  # book chunking, recursive separator ladder

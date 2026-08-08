@@ -1,0 +1,12 @@
+[Unit]
+Description=Second Brain: turn the week's captures into decisions to answer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# reads ~130 pages then runs one Claude Code pass; 900s inside the script
+TimeoutStartSec=1200
+Environment=HOME=/root
+EnvironmentFile=-/root/.hermes/profiles/secondbrain-agent/.env
+ExecStart=/root/.hermes/scripts/sb_decision_prep.sh

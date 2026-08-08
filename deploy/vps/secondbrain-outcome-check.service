@@ -1,0 +1,14 @@
+[Unit]
+Description=Second Brain: assert the pipeline produced output (not just that it is alive)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=300
+Environment=HOME=/root
+# needs the Discord bot token to alert; '-' = optional so a missing file is not fatal
+EnvironmentFile=-/root/.hermes/profiles/secondbrain-agent/.env
+ExecStart=/root/.hermes/scripts/sb_outcome_check.sh
+# exit 1 means "checks failed and Discord was notified", which is a successful run
+SuccessExitStatus=0 1

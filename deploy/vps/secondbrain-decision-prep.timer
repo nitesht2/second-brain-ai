@@ -1,0 +1,11 @@
+[Unit]
+Description=Timer: weekly decision prep (Sunday 09:00 America/Los_Angeles)
+
+[Timer]
+# Sunday morning, ahead of the 20-minute review session. Persistent so a VPS
+# reboot over the weekend does not silently skip the week.
+OnCalendar=Sun *-*-* 09:00:00 America/Los_Angeles
+Persistent=true
+
+[Install]
+WantedBy=timers.target

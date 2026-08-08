@@ -393,8 +393,29 @@ xurl auth app --bearer-token YOUR_BEARER_TOKEN   # from developer.x.com (pay-as-
 xurl search "QUERY" -n 10                          # verify
 ```
 The X dev app/project must be on a plan that allows recent search (pay-as-you-go).
-For posting *as* a user you'd instead do the OAuth2 flow (`xurl auth oauth2 --app my-app`
-via an `ssh -L 8080:localhost:8080` tunnel) — not needed for ingest.
+Bookmarks/likes need OAuth2 **user context** (app-only bearer 403s on them), so
+`harvest_x.py` depends on the flow below. The token expires and every harvest then
+fails with an empty error message, because xurl writes the 401 body to stdout while
+the script reports stderr — check `xurl /2/users/me` first when a harvest goes quiet.
+
+```
+ssh -L 8080:localhost:8080 vps      # from the Mac, FIRST
+xurl auth oauth2 <USERNAME> --app my-app   # INSIDE that session, on the VPS
+xurl /2/users/me                    # verify: your user object, exit 0
+```
+
+Three traps, all of which cost real time on 2026-07-27:
+- There is **no `--scope` flag** on xurl 1.x. Scopes are compiled in. `xurl auth
+  oauth2 [USERNAME] [--app NAME]` is the whole surface.
+- Run it **on the VPS**, not the Mac. A token written to the Mac's `~/.xurl` does
+  nothing for the timer, which reads `/root/.xurl`.
+- If ssh prints `bind [127.0.0.1]:8080: Address already in use` the tunnel did **not**
+  attach, though the shell still logs you in. An older tunnel owns the port. Kill it
+  (`lsof -iTCP:8080 -sTCP:LISTEN` on the Mac) or the browser callback goes nowhere.
+
+If the flow keeps fighting you, authenticate on the Mac instead and copy the result:
+`scp ~/.xurl vps:/root/.xurl && ssh vps 'chmod 600 /root/.xurl'`. Back up the VPS copy
+first; it also holds the OAuth1/bearer entries the Mac's file may lack.
 
 **Profile-home gotcha:** the agent runs with `HOME=<profile>/home`, so xurl's
 `~/.xurl` (default `/root/.xurl`) isn't found. Symlink it:
