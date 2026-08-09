@@ -22,6 +22,7 @@ ALERTF=/root/.hermes/scripts/.sb_last_outcome_alert
 DAILYF=/root/.hermes/scripts/.sb_last_outcome_daily
 HB=/usr/local/bin/hermes
 SEEN=/root/.hermes/data/feeds/x_bookmarks_seen.json
+XURLF=/root/.xurl        # rewritten on every token refresh; its mtime is the heartbeat
 
 DAY=86400
 now=$(date +%s)
@@ -81,16 +82,25 @@ else
 fi
 
 # 3. HARVEST — the timer runs twice daily, so a seen-file older than ~26h means
-#    the API call is failing. An empty xurl error usually means an expired token.
+#    the API call is failing.
+#
+#    This used to run `xurl /2/users/me` to tell "stale" from "auth dead". That
+#    probe could itself trigger a token refresh, and X rotates refresh tokens on
+#    every use, so the check could break the credential it was testing. A monitor
+#    must not mutate what it observes.
+#
+#    ~/.xurl is rewritten on every refresh, so its mtime IS the credential's
+#    heartbeat, and reading it costs nothing. Harvest runs twice a day against a
+#    ~2h access token, so the file should be rewritten daily. On 2026-08-04 it
+#    froze at 01:00 and harvest failed every run after: that is the signature.
+tok_age=$(age "$XURLF")
 seen_age=$(age "$SEEN")
 if [ "$seen_age" -lt $(( DAY + 7200 )) ]; then
-  pass "x harvest (seen-file $(( seen_age / 3600 ))h old)"
+  pass "x harvest (seen-file $(( seen_age / 3600 ))h old, token refreshed $(( tok_age / 3600 ))h ago)"
+elif [ "$tok_age" -lt $(( DAY + 7200 )) ]; then
+  fail "x harvest stale ($(( seen_age / DAY ))d) though the token refreshed $(( tok_age / 3600 ))h ago — check x-harvest.service"
 else
-  if xurl /2/users/me >/dev/null 2>&1; then
-    fail "x harvest stale ($(( seen_age / DAY ))d) though auth is OK — check x-harvest.service"
-  else
-    fail "x harvest stale ($(( seen_age / DAY ))d) and xurl auth is REJECTED — token expired, re-auth (see harvest_x.py docstring)"
-  fi
+  fail "x harvest stale ($(( seen_age / DAY ))d) and ~/.xurl has not refreshed in $(( tok_age / DAY ))d — refresh chain broken, re-auth (see harvest_x.py docstring)"
 fi
 
 # 4. SEMANTIC INDEX — nightly timer; a full re-embed OOM-killed the box once, and
