@@ -121,6 +121,50 @@ swap_pct=0
 [ "${disk:-0}" -ge 85 ] && fail "disk ${disk}% full" || pass "disk ${disk}%"
 [ "$swap_pct" -ge 90 ] && fail "swap ${swap_pct}% used" || pass "swap ${swap_pct}%"
 
+# 6. PUBLISHING — Postiz is where posts actually leave the building, and a failed
+#    post is recorded in a table nobody reads. On 2026-08-09 three had accumulated
+#    unnoticed: one from 2026-06-01, and a NiteshTechAI thread from 2026-07-28 whose
+#    parent errored and left its continuation stuck in QUEUE for 12 days. The account
+#    kept publishing either side of it, so nothing looked wrong.
+#
+#    Two assertions, both read-only:
+#      a) nothing errored in the last ~26h  (window matches the daily cadence, so
+#         historical failures do not re-alarm forever)
+#      b) no channel's token expires within 14 days. Every X token runs to 2058, but
+#         LinkedIn's is short-lived and dies 2026-09-25.
+PG_CONTAINER=postiz-postgres
+PG_USER=postiz-user
+PG_DB=postiz-db-local
+psql_q(){ docker exec "$PG_CONTAINER" psql -U "$PG_USER" -d "$PG_DB" -tAc "$1" 2>/dev/null | tr -d ' '; }
+
+if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$PG_CONTAINER"; then
+  skip "postiz (container not running)"
+else
+  # Bare `state = 'ERROR'` fails: state is an enum, so cast it to text.
+  pz_err=$(psql_q "select count(*) from \"Post\" where \"deletedAt\" is null and state::text='ERROR' and \"publishDate\" > now() - interval '26 hours';")
+  pz_chan=$(psql_q "select count(*) from \"Integration\" where \"deletedAt\" is null and disabled=false;")
+  # Days until the SOONEST expiry across live channels; empty when none are set.
+  pz_days=$(psql_q "select floor(extract(epoch from (min(\"tokenExpiration\") - now()))/86400) from \"Integration\" where \"deletedAt\" is null and disabled=false and \"tokenExpiration\" is not null;")
+
+  if [ -z "${pz_chan:-}" ]; then
+    skip "postiz (database unreachable)"
+  else
+    [ "${pz_err:-0}" -gt 0 ] \
+      && fail "postiz: $pz_err post(s) FAILED to publish in the last 24h (check the Post table, or the VoicePost pipeline view)" \
+      || pass "postiz ($pz_chan channels, 0 failed posts in 24h)"
+
+    if [ -n "${pz_days:-}" ]; then
+      if [ "$pz_days" -lt 0 ]; then
+        fail "postiz: a channel token EXPIRED $(( -pz_days ))d ago — that platform is no longer publishing, reconnect it"
+      elif [ "$pz_days" -le 14 ]; then
+        fail "postiz: a channel token expires in ${pz_days}d — reconnect it before posting stops silently"
+      else
+        pass "postiz tokens (soonest expiry in ${pz_days}d)"
+      fi
+    fi
+  fi
+fi
+
 # ── the number that tracks the vault's actual problem ──────────────────────
 # Not a pass/fail. Pages accumulate on their own; decisions only move when you
 # answer one. A rising open count with a flat answered count is the vault turning
