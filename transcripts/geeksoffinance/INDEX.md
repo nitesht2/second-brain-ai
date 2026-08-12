@@ -1,10 +1,10 @@
-RESULT: OK — 27 transcripts
+RESULT: OK — 35 transcripts
 
 # Geeks of Finance — channel index
 
 Total videos on channel (via yt-dlp flat-playlist of @geeksoffinance/videos): 474
 Gamma Exposure playlist (PLzckDKTwqhx0gcsZafG7Q25RjhpcLT9l_): 13 videos
-Transcripts fetched into this directory: 27 (cap was 40)
+Transcripts fetched into this directory: 35 (cap was 40)
 
 Fetch method: yt-dlp auto/manual English captions (VTT -> plain text). youtube_transcript_api was fully IP-blocked (IpBlocked) from this datacenter; yt-dlp android-vr client worked intermittently, with retries across multiple waves.
 
@@ -13,9 +13,9 @@ Fetch method: yt-dlp auto/manual English captions (VTT -> plain text). youtube_t
 yJVAyXw44z8 | unknown | The VIX Is Hinting at What's Coming
 UPPtnE8a_j4 | unknown | The Options Market Is Quietly Positioning For What's Next
 7NQRoKdrJT8 | unknown | Most Traders Are Missing This
-smnHb2emSPk | unknown | Where Gamma Exposure Is Pointing After The Big Market Rally
+smnHb2emSPk | 2026-08-06 | Where Gamma Exposure Is Pointing After The Big Market Rally [fetched]
 YyEGf0oMrAc | unknown | The Big Investment Opportunities Starting To Emerge
-YYCpYewLlw0 | unknown | Market Gamma Just Reached An Extreme
+YYCpYewLlw0 | 2026-08-05 | Market Gamma Just Reached An Extreme [fetched]
 bgiut6GP-XU | unknown | Big Trading Setups Are Developing Post-Earnings
 oThcGVgQGMQ | unknown | Traders Are Quietly Loading Up For Next Week
 sBP51vHHZz0 | unknown | Where The Options Market Is Pointing Next
@@ -40,7 +40,7 @@ zBbfr80EerM | unknown | Big Trading Setups Are Developing Beneath The Market Sur
 psGYpPoqLMU | unknown | Where The Options Market Is Pointing To Start July's OpEx Cycle
 5fC9MYNVKZI | unknown | FOMC Just Changed The Gamma Setup
 O1pFGGIiJr0 | unknown | Why The AI Infrastructure Trade Refuses To Break
-kTR2NiKOrAk | unknown | What Gamma Is Setting Up For OpEx Week
+kTR2NiKOrAk | 2026-06-16 | What Gamma Is Setting Up For OpEx Week [fetched]
 kJeZwaQZDnQ | unknown | The Biggest Market Risk Just Disappeared
 fou7cYCx4jk | 2026-06-12 | The Market Just Flipped Back To Positive Gamma [fetched]
 l8WNhdXY0cc | unknown | What Happens at This Level Could Change Everything
@@ -49,7 +49,7 @@ GrtNeugrZrA | unknown | Why This Week Could Mark A Major Shift for Stocks
 D77o48EyuMk | unknown | What SPX & AMD Reveal About the Market's Next Move
 28J8vyMaOlQ | unknown | The Market Is Splitting in Two
 XhXX05Ajqaw | unknown | Something Is Changing Beneath These Extreme Moves
-TFe1xlIlvF8 | unknown | How Gamma Exposure Looks Heading Into June
+TFe1xlIlvF8 | 2026-06-01 | How Gamma Exposure Looks Heading Into June [fetched]
 CSTjnDmXUwc | unknown | The AI Infrastructure Trade Is Starting To Crack
 khQlhAAIIKg | unknown | Most Traders Aren't Ready For This
 RUy69kTBlP4 | unknown | Where The Options Market Is Pointing Next
@@ -78,7 +78,7 @@ OPc0HoL0XFM | unknown | Why This Week Will Be Huge For The Stock Market
 motWZhmn4es | unknown | The Stock Market Is About To Go Crazy
 NLMOPEp5pKw | unknown | Traders Are Not Expecting This
 l10CQdsCW5A | unknown | Market Structure Is On The Verge of a Big Change
-vukBCw512MM | unknown | The Stock Market Is About To Flip Back To Positive Gamma
+vukBCw512MM | 2026-04-06 | The Stock Market Is About To Flip Back To Positive Gamma [fetched]
 p8DrYc8tSf4 | 2026-04-02 | Gamma Exposure Is Giving a Signal for the Next Move [fetched]
 SteMt6VGF4k | unknown | A Big Trading Opportunity Is Building in the Market
 h4TlMVmGKT8 | unknown | What The Options Market Is Signalling for SPX, QQQ, & VIX
@@ -89,13 +89,13 @@ KvDLDNM2Wk0 | unknown | Why The Market Is Getting Ready for a Major Shift
 MrmRB5MHyXU | unknown | Something Big Is Setting Up for Traders This Week
 S5hwkQoHxGg | unknown | Selling Pressure Accelerates Below THIS Level
 O7D6LTpXmpQ | unknown | The Market Is About To Shift - Here's Why This Week Matters
-SRULNInPQPs | unknown | Why These Key Levels Will Determine The Market's Next Move
+SRULNInPQPs | 2026-03-17 | Why These Key Levels Will Determine The Market's Next Move [fetched]
 VFZCyh8BXLA | unknown | The Stock Market Is About To Go Crazy This Week
 dG91Jg16YlA | unknown | Most Traders Aren't Expecting This....
 c9E4FA-iv30 | unknown | What Gamma Exposure Is Signalling for SPX, IWM, and VIX
 JMQTVIGuAKQ | unknown | Where The Options Market Is Pointing Next
 7r0pD_JrC-U | unknown | Why This Week Could Be The Biggest Trading Opportunity of the Year
--8Y0EO3XYC0 | unknown | Where Gamma Exposure Is Pointing To Next
+-8Y0EO3XYC0 | 2026-03-05 | Where Gamma Exposure Is Pointing To Next [fetched]
 tFTPtqk5l50 | unknown | A Massive Trading Opportunity Is Building in the Stock Market
 hdHowK-Wn10 | unknown | Why SPX Keeps Holding This Level - But Volatility Is Rising
 zu4UQ6Jhsds | unknown | How The Options Market Looks Following The Attack on Iran
@@ -461,7 +461,7 @@ CI5Lc5Q_90E | unknown | Option Dealer Supply & Demand Trading
 3Ukwu7gEsjo | unknown | 9% in ONE week. How we identify moves BEFORE they happen.
 vf-nzgiDMuc | 2024-06-21 | SPX 0 DTE GEX [fetched]
 yNS5XLYvp0Y | 2024-06-17 | Day Trading 0 DTE GEX Flow | Option Dealer Levels [fetched]
-GMtwN1BX9dY | unknown | Trading GEX with ChatGPT - Results & Strategy
+GMtwN1BX9dY | 2024-06-13 | Trading GEX with ChatGPT - Results & Strategy [fetched]
 J5SrVl4UmOo | 2024-05-19 | Trading SPY Options - How We Trade GEX Like Option Dealers [fetched]
 vjT3I6PRUSY | 2024-05-13 | Why Trading Gamma Exposure (GEX) DOMINATES Other Strategies [fetched]
 1BEs5MEVSb0 | unknown | THIS Trading Strategy Is A GAME CHANGER
@@ -489,14 +489,6 @@ EAQ5DUJaOog | unknown | Why THIS Is The Best Trading Indicator
 
 - kkg7bepWcbw (): DownloadError: ERROR: [youtube] kkg7bepWcbw: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
 - EQmKsw80WrE (): DownloadError: ERROR: [youtube] EQmKsw80WrE: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- GMtwN1BX9dY (Trading GEX with ChatGPT - Results & Strategy): DownloadError: ERROR: [youtube] GMtwN1BX9dY: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- smnHb2emSPk (Where Gamma Exposure Is Pointing After The Big Market Rally): DownloadError: ERROR: [youtube] smnHb2emSPk: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- YYCpYewLlw0 (Market Gamma Just Reached An Extreme): DownloadError: ERROR: [youtube] YYCpYewLlw0: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
 - 5fC9MYNVKZI (FOMC Just Changed The Gamma Setup): DownloadError: ERROR: [youtube] 5fC9MYNVKZI: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- kTR2NiKOrAk (What Gamma Is Setting Up For OpEx Week): DownloadError: ERROR: [youtube] kTR2NiKOrAk: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- TFe1xlIlvF8 (How Gamma Exposure Looks Heading Into June): DownloadError: ERROR: [youtube] TFe1xlIlvF8: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- vukBCw512MM (The Stock Market Is About To Flip Back To Positive Gamma): DownloadError: ERROR: [youtube] vukBCw512MM: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- SRULNInPQPs (Why These Key Levels Will Determine The Market's Next Move): DownloadError: ERROR: [youtube] SRULNInPQPs: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
 - c9E4FA-iv30 (What Gamma Exposure Is Signalling for SPX, IWM, and VIX): DownloadError: ERROR: [youtube] c9E4FA-iv30: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
-- -8Y0EO3XYC0 (Where Gamma Exposure Is Pointing To Next): DownloadError: ERROR: [youtube] -8Y0EO3XYC0: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
 - WTQCoudvsS4 (The Market Just Flipped Into Negative Gamma (All Major Indices)): DownloadError: ERROR: [youtube] WTQCoudvsS4: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-d
