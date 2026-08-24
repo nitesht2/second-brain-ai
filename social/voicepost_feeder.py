@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
-"""Second Brain -> VoicePost source feeder (Phase 1: NiteshTechAI on X).
+"""Second Brain -> VoicePost source feeder (NiteshTechAI).
 
-Pipeline:
-    vetted vault page  ->  compose NiteshTechAI X thread  ->  pre-validate with
-    voicegate (the same gate VoicePost enforces)  ->  POST /api/drafts
+Take ONE vetted vault page and atomize it into several platform pieces
+(a thread, a standalone hook, a numbered-takeaways post), each drafted in the
+NiteshTechAI voice and dropped into VoicePost for human review.
 
-VoicePost then handles the gate, human review/approve, scheduling, and posting
-to X via Postiz. This feeder only selects, composes, pre-validates, and pushes.
-Nothing here posts anything; a draft always waits for a human in the VoicePost
-Plan tab.
+Two compose engines:
 
-Design notes:
-  - Voice rules are pulled LIVE from VoicePost (GET /api/voice-rules) so the
-    feeder composes and validates against the exact rules the server enforces.
-  - The LLM call mirrors the brain's OpenRouter path (stdlib only) instead of
-    importing auto_ingest.py, to avoid that module's heavy deps.
-  - voicegate is imported from the VoicePost repo by path (it is pure stdlib).
+  chat  (default) -- POST /api/chat. VoicePost composes on Nitesh's CLAUDE
+        SUBSCRIPTION (its claude-code path on kvm2) and runs its own voice gate
+        + regeneration server-side. The feeder is pure HTTP: no API key, no
+        model, no local voicegate. This is what "write on my subscription" means.
 
-Env (all optional, sane defaults):
+  openrouter -- the feeder composes locally via OpenRouter (metered) and
+        pre-validates with the same voicegate package, then POSTs /api/drafts.
+        Kept as an offline / no-VoicePost-LLM fallback. Select with --engine.
+
+Either way nothing posts: every draft waits for a human in the VoicePost Plan
+tab. Trust-network on the tailnet means no token is needed from the Mac.
+
+Env (all optional):
     VOICEPOST_URL        default http://100.112.75.103:8081/voicepost
-    VOICEPOST_TOKEN      Bearer service token; omit when on the tailnet
-                         (VoicePost runs TRUST_NETWORK, so tailnet == credential)
+    VOICEPOST_TOKEN      Bearer token; omit on the tailnet (TRUST_NETWORK)
     VOICEPOST_CHANNEL_ID default cmrok8hjl0001nv6o5vhtikt3  (NiteshTechAI / X)
-    VOICEPOST_REPO       default ~/Projects/voicepost  (to import voicegate)
+    FEEDER_ENGINE        chat | openrouter   (default chat)
+    VOICEPOST_REPO       default ~/Projects/voicepost   (openrouter engine only)
     SECOND_BRAIN_PATH    default ~/SecondBrain
-    OPENROUTER_API_KEY / OPENROUTER_MODEL / SECOND_BRAIN_PROVIDER
-                         read from env, falling back to ~/.secondbrain.env
+    OPENROUTER_API_KEY / FEEDER_MODEL         (openrouter engine only)
 """
 from __future__ import annotations
 
@@ -45,9 +46,9 @@ VOICEPOST_URL = os.environ.get(
     "VOICEPOST_URL", "http://100.112.75.103:8081/voicepost"
 ).rstrip("/")
 VOICEPOST_TOKEN = os.environ.get("VOICEPOST_TOKEN", "")
-# NiteshTechAI / X channel (Postiz integration id).
-NITESHTECH_X = "cmrok8hjl0001nv6o5vhtikt3"
+NITESHTECH_X = "cmrok8hjl0001nv6o5vhtikt3"  # NiteshTechAI / X (Postiz integration id)
 CHANNEL_ID = os.environ.get("VOICEPOST_CHANNEL_ID", NITESHTECH_X)
+ENGINE = os.environ.get("FEEDER_ENGINE", "chat").lower()
 
 VOICEPOST_REPO = Path(
     os.environ.get("VOICEPOST_REPO", str(Path.home() / "Projects" / "voicepost"))
@@ -56,54 +57,68 @@ VAULT = Path(
     os.environ.get("SECOND_BRAIN_PATH", str(Path.home() / "SecondBrain"))
 ).expanduser()
 
+# openrouter engine only
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-# Social copy quality matters; default to a current, capable model. Overridable
-# via the FEEDER_MODEL env (kept separate from the brain's OPENROUTER_MODEL so
-# fixing one does not silently change the other).
 OPENROUTER_MODEL = os.environ.get("FEEDER_MODEL", "anthropic/claude-sonnet-5")
-TEMPERATURE = 0.4  # a touch of variety for social copy; brain uses 0.2 for structure
+TEMPERATURE = 0.4
 MAX_TOKENS = 2000
-MAX_REGENS = 2  # regen attempts when the voice gate flags a draft
+MAX_REGENS = 2
+
+HTTP_TIMEOUT = 200  # chat composition can take ~45s per format
+CHAT_MESSAGE_CAP = 4000  # /api/chat enforces message <= 4000 chars
+SOURCE_BUDGET_LOCAL = 6000  # openrouter engine has no such server cap
 
 # --------------------------------------------------------------------------- #
-# THE ONE PIECE OF VOICE/PRODUCT JUDGEMENT WORTH TUNING.
-# How a vetted vault page becomes a NiteshTechAI X thread. Everything else is
-# plumbing. Edit this to change what the drafts feel like. {system_prompt},
-# {title}, and {source} are filled in at compose time.
+# ATOMIZE: the formats one source explodes into, and the brief for each.
+# The brief IS the /api/chat message; VoicePost supplies the NiteshTechAI voice,
+# the anti-slop gate, and regeneration. {title} and {source} are filled in.
+# This is the voice/product knob worth tuning: edit a brief to reshape a format,
+# add a key to add a format.
 # --------------------------------------------------------------------------- #
-COMPOSE_INSTRUCTION = """{system_prompt}
+FORMATS: dict[str, dict[str, str]] = {
+    "thread": {
+        "template_name": "brain-thread",
+        "brief": (
+            "Draft an X thread (3 to 5 posts) from this research of mine. Post 1 is "
+            "a hard hook that earns the scroll-stop in one line. Each later post "
+            "carries one concrete idea from the source, specific over vague. Sound "
+            "like a builder sharing what he learned, not a summary.\n\n"
+            "Source title: {title}\n\nSource notes:\n{source}"
+        ),
+    },
+    "hook": {
+        "template_name": "brain-hook",
+        "brief": (
+            "Draft a SINGLE standalone X post (no thread) carrying the one sharpest, "
+            "most contrarian or useful insight in this research of mine.\n\n"
+            "Source title: {title}\n\nSource notes:\n{source}"
+        ),
+    },
+    "listicle": {
+        "template_name": "brain-listicle",
+        "brief": (
+            "Draft a SINGLE X post in a numbered-takeaways format: a one-line setup, "
+            "then 3 concrete takeaways from this research as separate numbered lines "
+            "(1. 2. 3.). One post, multi-line.\n\n"
+            "Source title: {title}\n\nSource notes:\n{source}"
+        ),
+    },
+}
+DEFAULT_FORMATS = ["thread", "hook", "listicle"]
 
----
-
-You are turning ONE piece of Nitesh's own vetted research into an X thread in
-his voice (rules above).
-
-Source title: {title}
-
-Source notes:
-{source}
-
-Write an X/Twitter thread of 3 to 5 posts:
-  - Post 1 is a hard hook. No throat-clearing. Earn the scroll-stop in one line.
-  - Each later post carries one concrete idea from the source. Specific over vague.
-  - Keep every post under 270 characters.
-  - No hashtags. No em dashes. No semicolons. No backticks. Do not open a post
-    with the word "I". Plain text only.
-  - Sound like a builder sharing what he learned, not a summary of an article.
-
-Output ONLY the posts, separated by a line containing exactly:
----POST BREAK---
-No numbering, no commentary, no preamble."""
+# openrouter engine: wrap the brief with voice + a strict output contract.
+_OUTPUT_RULE = (
+    "Output ONLY the post(s), separated by a line containing exactly:\n"
+    "---POST BREAK---\n"
+    "No commentary or preamble. No hashtags, em dashes, semicolons, or backticks. "
+    "Keep every post under 270 characters. Do not open a post with the word \"I\"."
+)
 
 _env_loaded = False
 
 
 def _load_env_file(path: Path = Path.home() / ".secondbrain.env") -> None:
-    """Load KEY=value lines from the brain's dotenv into os.environ (setdefault).
-
-    Mirrors auto_ingest's loader so the feeder runs standalone (cron/launchd do
-    not source shell rc). Existing env wins.
-    """
+    """Load KEY=value lines from the brain's dotenv into os.environ (setdefault)."""
     global _env_loaded
     if _env_loaded or not path.exists():
         _env_loaded = True
@@ -118,7 +133,68 @@ def _load_env_file(path: Path = Path.home() / ".secondbrain.env") -> None:
 
 
 # --------------------------------------------------------------------------- #
-# voicegate (imported from the VoicePost repo; pure stdlib, no install needed)
+# VoicePost HTTP helpers
+# --------------------------------------------------------------------------- #
+
+
+def _vp_headers() -> dict[str, str]:
+    headers = {"Content-Type": "application/json"}
+    if VOICEPOST_TOKEN:
+        headers["Authorization"] = f"Bearer {VOICEPOST_TOKEN}"
+    return headers
+
+
+def _vp_request(path: str, obj: dict | None = None, method: str = "GET") -> dict:
+    """Call the VoicePost API and return parsed JSON. obj -> JSON body for POST."""
+    data = json.dumps(obj).encode() if obj is not None else None
+    req = urllib.request.Request(
+        f"{VOICEPOST_URL}{path}", data=data, headers=_vp_headers(), method=method
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"{method} {path} -> HTTP {e.code}: {e.read().decode(errors='ignore')}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"VoicePost not reachable at {VOICEPOST_URL}: {e}")
+
+
+def chat_compose(message: str, channel_id: str) -> dict:
+    """Ask VoicePost to compose a draft on the Claude subscription. Returns draft."""
+    return _vp_request(
+        "/api/chat", {"message": message, "channel_id": channel_id}, method="POST"
+    )
+
+
+def push_draft(thread: list[str], repo_meta: dict, channel_id: str, template_name: str) -> dict:
+    """POST a pre-composed thread as a draft (openrouter engine)."""
+    return _vp_request(
+        "/api/drafts",
+        {
+            "thread": thread,
+            "source": "brain",
+            "template_name": template_name,
+            "repo_meta": repo_meta,
+            "channel_id": channel_id,
+        },
+        method="POST",
+    )
+
+
+def fetch_voice_rules_md(channel_id: str) -> str:
+    """Live voice-rules markdown for a channel, or the bundled default (openrouter)."""
+    try:
+        body = _vp_request(f"/api/voice-rules?channel_id={channel_id}")
+        if body.get("content_md"):
+            return body["content_md"]
+    except RuntimeError as e:
+        print(f"  ! voice-rules fetch failed ({e}); using bundled default", file=sys.stderr)
+    _, default_rules_md, _ = _import_voicegate()
+    return default_rules_md()
+
+
+# --------------------------------------------------------------------------- #
+# openrouter engine (local compose + voicegate pre-validation)
 # --------------------------------------------------------------------------- #
 
 
@@ -131,53 +207,41 @@ def _import_voicegate():
         from voicegate.validator import validate_thread
     except ImportError as e:
         raise RuntimeError(
-            f"cannot import voicegate from {VOICEPOST_REPO}. "
-            f"Set VOICEPOST_REPO to the voicepost checkout. ({e})"
+            f"cannot import voicegate from {VOICEPOST_REPO}; set VOICEPOST_REPO ({e})"
         )
     return load_rules, default_rules_md, validate_thread
 
 
-# --------------------------------------------------------------------------- #
-# LLM (mirrors the brain's OpenRouter path, stdlib only)
-# --------------------------------------------------------------------------- #
-
-
 def _openrouter(prompt: str) -> str:
-    """Call OpenRouter and return the completion text."""
+    """Call OpenRouter (reasoning off) and return the completion text."""
     _load_env_file()
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
-        raise RuntimeError("OPENROUTER_API_KEY not set (checked env + ~/.secondbrain.env)")
+        raise RuntimeError("OPENROUTER_API_KEY not set (env + ~/.secondbrain.env)")
     payload = json.dumps(
         {
             "model": OPENROUTER_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": TEMPERATURE,
             "max_tokens": MAX_TOKENS,
-            # Short social copy does not need extended thinking. Claude 5 models
-            # run reasoning by default on OpenRouter and will spend the whole
-            # token budget on it, returning null content. Turn it off.
+            # Claude 5 models reason by default on OpenRouter and burn the whole
+            # budget on it, returning null content. Off for short social copy.
             "reasoning": {"enabled": False},
         }
     ).encode()
     req = urllib.request.Request(
         OPENROUTER_BASE_URL,
         data=payload,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
         method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
-            body = json.loads(resp.read())
-            choice = body["choices"][0]
+            choice = json.loads(resp.read())["choices"][0]
             content = choice["message"].get("content")
             if not content:
                 raise RuntimeError(
-                    f"empty completion (finish_reason={choice.get('finish_reason')}); "
-                    "raise MAX_TOKENS or check the model"
+                    f"empty completion (finish_reason={choice.get('finish_reason')})"
                 )
             return content.strip()
     except urllib.error.URLError as e:
@@ -186,103 +250,44 @@ def _openrouter(prompt: str) -> str:
         raise RuntimeError(f"unexpected OpenRouter response: {e}")
 
 
-# --------------------------------------------------------------------------- #
-# VoicePost API
-# --------------------------------------------------------------------------- #
-
-
-def _vp_headers() -> dict[str, str]:
-    headers = {"Content-Type": "application/json"}
-    if VOICEPOST_TOKEN:
-        headers["Authorization"] = f"Bearer {VOICEPOST_TOKEN}"
-    return headers
-
-
-def fetch_voice_rules_md(channel_id: str) -> str:
-    """Return the live voice-rules markdown for a channel, or the bundled default.
-
-    Falls back to voicegate.default_rules_md() if VoicePost is unreachable so the
-    feeder still validates against something sane.
-    """
-    url = f"{VOICEPOST_URL}/api/voice-rules?channel_id={channel_id}"
-    req = urllib.request.Request(url, headers=_vp_headers(), method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = json.loads(resp.read())
-            md = body.get("content_md", "")
-            if md:
-                return md
-    except (urllib.error.URLError, json.JSONDecodeError, KeyError) as e:
-        print(f"  ! voice-rules fetch failed ({e}); using bundled default", file=sys.stderr)
-    _, default_rules_md, _ = _import_voicegate()
-    return default_rules_md()
-
-
-def push_draft(thread: list[str], repo_meta: dict, channel_id: str) -> dict:
-    """POST one thread to VoicePost as a draft. Returns the response JSON."""
-    payload = json.dumps(
-        {
-            "thread": thread,
-            "source": "brain",
-            "template_name": "brain-synthesis",
-            "repo_meta": repo_meta,
-            "channel_id": channel_id,
-        }
-    ).encode()
-    req = urllib.request.Request(
-        f"{VOICEPOST_URL}/api/drafts", data=payload, headers=_vp_headers(), method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="ignore")
-        raise RuntimeError(f"push failed HTTP {e.code}: {detail}")
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"VoicePost not reachable: {e}")
-
-
-# --------------------------------------------------------------------------- #
-# Compose + validate
-# --------------------------------------------------------------------------- #
-
-
 def _split_thread(raw: str) -> list[str]:
-    """Split model output on the POST BREAK delimiter into clean posts."""
-    parts = [p.strip() for p in raw.split("---POST BREAK---")]
-    return [p for p in parts if p]
+    return [p.strip() for p in raw.split("---POST BREAK---") if p.strip()]
 
 
-def compose_thread(title: str, source: str, system_prompt: str) -> list[str]:
-    """Compose one NiteshTechAI X thread from a vetted source."""
-    prompt = COMPOSE_INSTRUCTION.format(
-        system_prompt=system_prompt, title=title, source=source[:6000]
-    )
-    return _split_thread(_openrouter(prompt))
+def _excerpt(text: str, budget: int) -> str:
+    """Best `budget` chars of a source. Synthesis pages bury the payoff (Key
+    Insight / Actionable Takeaways) at the end, so prefer those sections; fall
+    back to the head for other pages."""
+    picks: list[str] = []
+    for key in ("## Key Insight", "## Actionable Takeaways", "## Contradictions"):
+        i = text.find(key)
+        if i != -1:
+            picks.append(text[i : i + 1600])
+    body = "\n\n".join(picks) if picks else text
+    return body[:budget].strip()
 
 
-def compose_validated(title: str, source: str, rules_md: str) -> tuple[list[str], list[str]]:
-    """Compose and regenerate until the voice gate passes or attempts run out.
+def _chat_message(fmt: str, title: str, full_text: str) -> str:
+    """Build a /api/chat message that fits under CHAT_MESSAGE_CAP."""
+    tmpl = FORMATS[fmt]["brief"]
+    overhead = len(tmpl.format(title=title, source=""))
+    budget = max(0, CHAT_MESSAGE_CAP - overhead - 20)
+    return tmpl.format(title=title, source=_excerpt(full_text, budget))
 
-    Returns (thread, remaining_violations). Empty violations means the thread is
-    gate-clean and will land in VoicePost as `validated`.
-    """
-    load_rules, _, validate_thread = _import_voicegate()
-    rules = load_rules(rules_md)
-    system_prompt = rules.system_prompt
 
-    thread = compose_thread(title, source, system_prompt)
+def compose_local(brief: str, rules) -> tuple[list[str], list[str]]:
+    """Compose a format via OpenRouter and regen until the gate passes."""
+    _, _, validate_thread = _import_voicegate()
+    prompt = f"{rules.system_prompt}\n\n---\n\n{brief}\n\n{_OUTPUT_RULE}"
+    thread = _split_thread(_openrouter(prompt))
     clean, violations = validate_thread(thread, rules)
     attempt = 0
     while not clean and attempt < MAX_REGENS:
         attempt += 1
         fix = (
-            f"{system_prompt}\n\n---\n\nYour previous draft failed the voice gate "
-            f"with these violations:\n- " + "\n- ".join(violations) + "\n\n"
-            "Rewrite the thread fixing every violation. Keep the same ideas and "
-            "voice.\n\nSource title: " + title + "\n\nSource notes:\n" + source[:6000]
-            + "\n\nOutput ONLY the posts separated by a line containing exactly:\n"
-            "---POST BREAK---"
+            f"{rules.system_prompt}\n\n---\n\nYour previous draft failed the voice "
+            f"gate:\n- " + "\n- ".join(violations) + "\n\nRewrite it fixing every "
+            f"violation, same ideas and voice.\n\n{brief}\n\n{_OUTPUT_RULE}"
         )
         thread = _split_thread(_openrouter(fix))
         clean, violations = validate_thread(thread, rules)
@@ -294,49 +299,80 @@ def compose_validated(title: str, source: str, rules_md: str) -> tuple[list[str]
 # --------------------------------------------------------------------------- #
 
 
-def run(source_path: Path, channel_id: str, dry_run: bool) -> int:
-    """Compose one draft from a vault page and push it (unless dry-run)."""
+def run(source_path: Path, channel_id: str, formats: list[str], engine: str, dry_run: bool) -> int:
+    """Atomize one vault page into `formats` and feed each to VoicePost."""
     if not source_path.exists():
         print(f"source not found: {source_path}", file=sys.stderr)
         return 1
+    unknown = [f for f in formats if f not in FORMATS]
+    if unknown:
+        print(f"unknown format(s): {unknown}. known: {list(FORMATS)}", file=sys.stderr)
+        return 1
 
     title = source_path.stem
-    source_text = source_path.read_text(encoding="utf-8", errors="ignore")
-    print(f"source: {title}")
+    full_text = source_path.read_text(encoding="utf-8", errors="ignore")
+    print(f"source: {title}\nengine: {engine}  formats: {', '.join(formats)}\n")
 
-    rules_md = fetch_voice_rules_md(channel_id)
-    thread, violations = compose_validated(title, source_text, rules_md)
+    rules = None
+    if engine == "openrouter":
+        load_rules, _, _ = _import_voicegate()
+        rules = load_rules(fetch_voice_rules_md(channel_id))
 
-    print(f"\ncomposed {len(thread)} post(s):")
-    for i, post in enumerate(thread, 1):
-        print(f"  [{i}] {post}")
-    if violations:
-        print("\ngate still flags (VoicePost will mark this `flagged` for a human fix):")
-        for v in violations:
-            print(f"  ! {v}")
-    else:
-        print("\ngate: CLEAN")
+    pushed = 0
+    for fmt in formats:
+        print(f"--- {fmt} ---")
+        if engine == "chat":
+            message = _chat_message(fmt, title, full_text)
+            if dry_run:
+                print(f"[dry-run] would POST /api/chat ({len(message)} chars):\n{message[:200]}...\n")
+                continue
+            draft = chat_compose(message, channel_id)
+            thread = draft.get("thread") or draft.get("thread_json") or []
+            _preview(thread)
+            print(f"-> draft id={draft.get('id')} status={draft.get('status')}\n")
+            pushed += 1
+        else:  # openrouter
+            brief = FORMATS[fmt]["brief"].format(
+                title=title, source=_excerpt(full_text, SOURCE_BUDGET_LOCAL)
+            )
+            thread, violations = compose_local(brief, rules)
+            _preview(thread)
+            print("gate:", "CLEAN" if not violations else f"flagged {violations}")
+            if dry_run:
+                print("[dry-run] not pushing.\n")
+                continue
+            repo_meta = {"vault_ref": str(source_path), "title": title, "format": fmt}
+            draft = push_draft(thread, repo_meta, channel_id, FORMATS[fmt]["template_name"])
+            print(f"-> draft id={draft.get('id')} status={draft.get('status')}\n")
+            pushed += 1
 
-    if dry_run:
-        print("\n[dry-run] not pushing.")
-        return 0
-
-    repo_meta = {"vault_ref": str(source_path), "title": title, "kind": "synthesis"}
-    resp = push_draft(thread, repo_meta, channel_id)
-    print(
-        f"\npushed -> draft id={resp.get('id')} status={resp.get('status')}\n"
-        f"review at {VOICEPOST_URL}/plan"
-    )
+    if not dry_run:
+        print(f"pushed {pushed} draft(s). review at {VOICEPOST_URL}/plan")
     return 0
 
 
+def _preview(thread: list[str]) -> None:
+    for i, post in enumerate(thread, 1):
+        print(f"  [{i}] {post[:200]}")
+
+
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Feed a vault page into VoicePost as a draft.")
+    ap = argparse.ArgumentParser(description="Atomize a vault page into VoicePost drafts.")
     ap.add_argument("--source", required=True, help="path to a vetted vault .md page")
     ap.add_argument("--channel", default=CHANNEL_ID, help="VoicePost channel id")
-    ap.add_argument("--dry-run", action="store_true", help="compose + validate, do not push")
+    ap.add_argument(
+        "--formats",
+        default=",".join(DEFAULT_FORMATS),
+        help=f"comma list from {list(FORMATS)} (default all)",
+    )
+    ap.add_argument(
+        "--engine", choices=["chat", "openrouter"], default=ENGINE,
+        help="chat = compose on your Claude subscription (default); openrouter = local/metered",
+    )
+    ap.add_argument("--dry-run", action="store_true", help="show what would be sent, do not create drafts")
     args = ap.parse_args()
-    return run(Path(args.source).expanduser(), args.channel, args.dry_run)
+    formats = [f.strip() for f in args.formats.split(",") if f.strip()]
+    return run(Path(args.source).expanduser(), args.channel, formats, args.engine, args.dry_run)
 
 
 if __name__ == "__main__":
