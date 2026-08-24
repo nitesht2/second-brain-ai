@@ -46,8 +46,13 @@ VOICEPOST_URL = os.environ.get(
     "VOICEPOST_URL", "http://100.112.75.103:8081/voicepost"
 ).rstrip("/")
 VOICEPOST_TOKEN = os.environ.get("VOICEPOST_TOKEN", "")
-NITESHTECH_X = "cmrok8hjl0001nv6o5vhtikt3"  # NiteshTechAI / X (Postiz integration id)
-CHANNEL_ID = os.environ.get("VOICEPOST_CHANNEL_ID", NITESHTECH_X)
+# Postiz integration ids, one per brand-on-platform account.
+CHANNELS = {
+    "x": "cmrok8hjl0001nv6o5vhtikt3",         # NiteshTechAI / X
+    "linkedin": "cms0ykud50001uv706l2l7fq8",  # Nitesh Thapa / LinkedIn
+}
+NITESHTECH_X = CHANNELS["x"]
+CHANNEL_ID = os.environ.get("VOICEPOST_CHANNEL_ID", "")  # explicit id override
 ENGINE = os.environ.get("FEEDER_ENGINE", "chat").lower()
 
 VOICEPOST_REPO = Path(
@@ -103,8 +108,23 @@ FORMATS: dict[str, dict[str, str]] = {
             "Source title: {title}\n\nSource notes:\n{source}"
         ),
     },
+    "linkedin": {
+        "template_name": "brain-linkedin",
+        "brief": (
+            "Draft ONE LinkedIn post (100 to 300 words) from this research of mine. "
+            "Warmer entry than X: open on lived detail or a point of contact, not a "
+            "verdict. Short paragraphs with real line breaks. Carry the two or three "
+            "most concrete ideas from the source, specific over vague. End on the "
+            "clearest concrete point, no summary kicker.\n\n"
+            "Source title: {title}\n\nSource notes:\n{source}"
+        ),
+    },
 }
-DEFAULT_FORMATS = ["thread", "hook", "listicle"]
+# What one source fans into, per platform.
+PLATFORM_FORMATS = {
+    "x": ["thread", "hook", "listicle"],
+    "linkedin": ["linkedin"],
+}
 
 # openrouter engine: wrap the brief with voice + a strict output contract.
 _OUTPUT_RULE = (
@@ -359,11 +379,17 @@ def _preview(thread: list[str]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Atomize a vault page into VoicePost drafts.")
     ap.add_argument("--source", required=True, help="path to a vetted vault .md page")
-    ap.add_argument("--channel", default=CHANNEL_ID, help="VoicePost channel id")
     ap.add_argument(
-        "--formats",
-        default=",".join(DEFAULT_FORMATS),
-        help=f"comma list from {list(FORMATS)} (default all)",
+        "--platform", choices=list(CHANNELS), default="x",
+        help="which brand-on-platform account to draft for (default x)",
+    )
+    ap.add_argument(
+        "--channel", default=CHANNEL_ID,
+        help="explicit VoicePost channel id (overrides --platform)",
+    )
+    ap.add_argument(
+        "--formats", default="",
+        help=f"comma list from {list(FORMATS)} (default: the platform's set)",
     )
     ap.add_argument(
         "--engine", choices=["chat", "openrouter"], default=ENGINE,
@@ -371,8 +397,12 @@ def main() -> int:
     )
     ap.add_argument("--dry-run", action="store_true", help="show what would be sent, do not create drafts")
     args = ap.parse_args()
-    formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    return run(Path(args.source).expanduser(), args.channel, formats, args.engine, args.dry_run)
+    channel = args.channel or CHANNELS[args.platform]
+    formats = (
+        [f.strip() for f in args.formats.split(",") if f.strip()]
+        or PLATFORM_FORMATS[args.platform]
+    )
+    return run(Path(args.source).expanduser(), channel, formats, args.engine, args.dry_run)
 
 
 if __name__ == "__main__":
