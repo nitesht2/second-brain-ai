@@ -37,6 +37,10 @@ graphify-out/
 
 # Local agent/tooling dirs (not project code)
 .agents/
-.claude/
+# (.claude/* not .claude/ — git cannot re-include a path whose parent dir is excluded)
+.claude/*
+# ...except project skills, which ARE project code — they are how an agent working
+# in this repo discovers the ingest paths without rediscovering them each session.
+!.claude/skills/
 skills-lock.json
 .playwright-mcp/

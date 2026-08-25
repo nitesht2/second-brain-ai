@@ -42,6 +42,9 @@ second-brain-ai/
 │   │   │                                    on the live box).
 │   │   ├── clip.py                        ← Synced from <VAULT>/scripts/
 │   │   ├── clip_yt.py                     ← YouTube-only caption clipper
+│   │   ├── clip_yt_channel.py             ← Same, but every video on a channel
+│   │   │                                    or playlist. Skips IDs already in
+│   │   │                                    raw/, so re-runs are incremental.
 │   │   ├── sb_watcher.sh                  ← inotify watcher script
 │   │   ├── secondbrain-watcher.service    ← systemd unit (raw/ inotify)
 │   │   ├── secondbrain-dispatch.service   ← systemd unit (standalone kanban
