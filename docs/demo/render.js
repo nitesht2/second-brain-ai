@@ -1,4 +1,4 @@
-// Render docs/demo/before-after.html to light and dark PNGs.
+// Render docs/demo/before-after.html (light + dark) and docs/demo/banner.html to PNGs.
 // Usage (from the repo root): node docs/demo/render.js
 // Needs Playwright: npm i -D playwright && npx playwright install chromium
 const path = require("path");
@@ -14,5 +14,8 @@ const { chromium } = require("playwright");
     await page.evaluate((t) => document.documentElement.classList.toggle("dark", t === "dark"), theme);
     await page.screenshot({ path: path.join(outDir, `before-after-${theme}.png`) });
   }
+  const banner = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+  await banner.goto("file://" + path.resolve(__dirname, "banner.html"));
+  await banner.screenshot({ path: path.join(outDir, "banner.png") });
   await browser.close();
 })();

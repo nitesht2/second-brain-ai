@@ -1,10 +1,12 @@
 <div align="center">
 
+<img src="docs/screenshots/banner.png" alt="Second Brain AI: Everything you read, connected. Save an article, video or PDF. AI turns it into linked notes in your Obsidian vault." width="100%">
+
 # 🧠 Second Brain AI
 
-### An always-on AI agent that reads your articles, videos, and tweets, files them into a self-organizing Obsidian wiki, and lets you query the result in plain English from any device.
+### Everything you read, connected.
 
-**Paste a link to a Discord bot. Wake up to a connected knowledge graph. Your laptop can stay off.**
+An AI agent reads your articles, videos, PDFs and tweets, files them into a self-organizing Obsidian wiki, and lets you ask it questions in plain English. Run it free on your Mac, or 24/7 on a small server.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Linux VPS](https://img.shields.io/badge/Runs%20on-Linux%20VPS-green)](#)

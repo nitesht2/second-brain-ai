@@ -9,6 +9,8 @@ Drop your screenshots here for the main README:
 - `lint-report.png` — /second-brain-lint report output
 - `before-after-light.png` / `before-after-dark.png` — Generated from
   [`docs/demo/before-after.html`](../demo/before-after.html); re-render with `node docs/demo/render.js`
+- `banner.png` — README header and GitHub social preview (1280×640), from
+  [`docs/demo/banner.html`](../demo/banner.html)
 - `demo.gif` — 15–20s GIF of the full flow (clip → ingest → graph update).
   Step-by-step recording guide: [`docs/demo/RECORDING.md`](../demo/RECORDING.md)
 
