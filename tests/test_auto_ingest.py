@@ -21,6 +21,8 @@ def vault(tmp_path, monkeypatch):
     monkeypatch.setattr(ai, "LAST_RUN_FILE", v / "outputs" / ".last_ingest_run")
     monkeypatch.setattr(ai, "BRAND_DIR", tmp_path / "no-voice")
     monkeypatch.setattr(ai, "DRY_RUN", False)
+    monkeypatch.setattr(ai, "PROVIDER", "openrouter")
+    monkeypatch.setattr(ai, "OPENROUTER_API_KEY", "test-key")
     return v
 
 
@@ -485,6 +487,26 @@ class TestMain:
         assert not called
 
     def test_empty_raw_updates_index(self, vault, monkeypatch):
+        self._run(monkeypatch)
+        assert (vault / "wiki/index.md").exists()
+
+    def test_missing_key_exits_without_stamping(self, vault, monkeypatch, capsys):
+        monkeypatch.setattr(ai, "OPENROUTER_API_KEY", "")
+        (vault / "raw/note.md").write_text("hello")
+        with pytest.raises(SystemExit):
+            self._run(monkeypatch)
+        assert "OPENROUTER_API_KEY" in capsys.readouterr().out
+        assert not ai.LAST_RUN_FILE.exists()
+        assert (vault / "raw/note.md").exists()
+
+    def test_missing_key_named_for_deepseek(self, vault, monkeypatch):
+        monkeypatch.setattr(ai, "PROVIDER", "deepseek")
+        monkeypatch.setattr(ai, "DEEPSEEK_API_KEY", "")
+        assert ai.missing_api_key() == "DEEPSEEK_API_KEY"
+
+    def test_fresh_vault_without_wiki_dir(self, tmp_path, vault, monkeypatch):
+        import shutil as _sh
+        _sh.rmtree(vault / "wiki")
         self._run(monkeypatch)
         assert (vault / "wiki/index.md").exists()
 

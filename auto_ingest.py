@@ -528,6 +528,13 @@ def call_deepseek(prompt: str) -> str:
         raise RuntimeError(f"Unexpected DeepSeek API response: {e}")
 
 
+def missing_api_key() -> str:
+    """Return the name of the env var the configured provider needs, or "" if set."""
+    if PROVIDER == "deepseek":
+        return "" if DEEPSEEK_API_KEY else "DEEPSEEK_API_KEY"
+    return "" if OPENROUTER_API_KEY else "OPENROUTER_API_KEY"
+
+
 def call_llm(prompt: str) -> str:
     """Route to configured provider.
 
@@ -1083,6 +1090,7 @@ def update_wiki_index():
 
     index_path = WIKI_DIR / "index.md"
     if not DRY_RUN:
+        WIKI_DIR.mkdir(parents=True, exist_ok=True)
         index_path.write_text("\n".join(lines), encoding="utf-8")
         print(f"  ✓ wiki/index.md updated ({total} entries)")
     else:
@@ -1095,6 +1103,12 @@ def update_wiki_index():
 def main():
     global DRY_RUN
     DRY_RUN = "--dry-run" in sys.argv
+
+    # Every LLM call would fail, and a stamped run would then block retries
+    # for MIN_HOURS, so stop before touching anything.
+    if "--save" not in sys.argv and missing_api_key():
+        print(f"{missing_api_key()} is not set. Export it or add it to ~/.secondbrain.env")
+        sys.exit(1)
 
     # Synthesis mode -- bypass ingest entirely
     if "--synthesize" in sys.argv:

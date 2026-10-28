@@ -25,8 +25,6 @@ second-brain-ai/
 │                                            find-path / hub-detection / vault stats.
 │
 ├── scripts/
-│   ├── clip.py                            ← VPS-side clipper (yt-dlp + whisper +
-│   │                                        captions, proxy-aware).
 │   ├── brain_clip.py                      ← Mac-side clipper (uses local Metal
 │   │                                        whisper-cli when available).
 │   ├── daily_digest.py                    ← Pulls GitHub trending / HN / model
@@ -40,7 +38,8 @@ second-brain-ai/
 │   │   ├── SCHEMA.template.md             ← Machine-readable knowledge schema
 │   │   │                                    (synced to <VAULT>/wiki/SCHEMA.md
 │   │   │                                    on the live box).
-│   │   ├── clip.py                        ← Synced from <VAULT>/scripts/
+│   │   ├── clip.py                        ← VPS-side clipper (yt-dlp + whisper +
+│   │   │                                    captions, proxy-aware).
 │   │   ├── clip_yt.py                     ← YouTube-only caption clipper
 │   │   ├── sb_watcher.sh                  ← inotify watcher script
 │   │   ├── secondbrain-watcher.service    ← systemd unit (raw/ inotify)
@@ -99,7 +98,7 @@ If you're new to the codebase, read in this order:
 5. [`docs/SECURITY.md`](SECURITY.md) — secrets model before you fork
 6. [`docs/diagrams/architecture.html`](diagrams/architecture.html) — visual overview
 7. [`obsidian_mcp.py`](../obsidian_mcp.py) — read the actual MCP tool surface
-8. [`scripts/clip.py`](../scripts/clip.py) — read the deterministic clipping logic
+8. [`deploy/vps/clip.py`](../deploy/vps/clip.py) — read the deterministic clipping logic
 
 ## Where to make changes
 

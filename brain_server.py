@@ -12,6 +12,7 @@ Usage:
 """
 
 import json
+import os
 import re
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -61,7 +62,7 @@ SETUP_HTML = """\
 </html>
 """
 
-RAW_DIR = Path.home() / "SecondBrain" / "raw"
+RAW_DIR = Path(os.environ.get("SECOND_BRAIN_PATH", str(Path.home() / "SecondBrain"))) / "raw"
 PORT = 7331
 
 
