@@ -1,7 +1,12 @@
 # Architecture
 
 Deep reference for how the system is structured. The [README](../README.md) has the high-level
-pitch; this doc has the layer-by-layer detail. Visual diagram: [`diagrams/architecture.html`](diagrams/architecture.html).
+pitch; this doc has the layer-by-layer detail. Visual diagram: [`diagrams/architecture.html`](diagrams/architecture.html) (detailed, open it in a browser).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="screenshots/architecture-dark.svg">
+  <img src="screenshots/architecture-light.svg" alt="Architecture overview: capture → raw/ inbox → auto_ingest.py or Hermes agent → wiki/ → Obsidian or questions">
+</picture>
 
 ## The four layers
 

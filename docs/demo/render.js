@@ -1,4 +1,4 @@
-// Render docs/demo/before-after.html (light + dark) and docs/demo/banner.html to PNGs.
+// Render the README images in docs/demo/*.html to PNGs in docs/screenshots/.
 // Usage (from the repo root): node docs/demo/render.js
 // Needs Playwright: npm i -D playwright && npx playwright install chromium
 const path = require("path");

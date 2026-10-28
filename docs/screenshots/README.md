@@ -9,6 +9,8 @@ Drop your screenshots here for the main README:
 - `lint-report.png` — /second-brain-lint report output
 - `before-after-light.png` / `before-after-dark.png` — Generated from
   [`docs/demo/before-after.html`](../demo/before-after.html); re-render with `node docs/demo/render.js`
+- `architecture-light.svg` / `architecture-dark.svg` — README architecture diagram, from
+  [`docs/diagrams/src/architecture.d2`](../diagrams/src/architecture.d2); rebuild with `python3 docs/diagrams/src/build.py` (needs [D2](https://d2lang.com))
 - `banner.png` — README header and GitHub social preview (1280×640), from
   [`docs/demo/banner.html`](../demo/banner.html)
 - `demo.gif` — 15–20s GIF of the full flow (clip → ingest → graph update).

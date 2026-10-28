@@ -62,16 +62,16 @@ Total monthly cost runs **~$8–$15** for a single-person setup.
   <img src="docs/screenshots/before-after-light.png" alt="Before and after: a saved article about spaced repetition becomes four linked wiki notes: a source note, a concept note, and entity notes for Hermann Ebbinghaus and Anki, each linking to the others">
 </picture>
 
-Under the hood, the always-on setup has four layers:
+Under the hood, both modes share the same inbox and the same wiki. Only the worker in the middle changes:
 
-```
-1. CAPTURE   →  how things enter the brain (5 paths into raw/)
-2. PIPELINE  →  watcher → kanban → dispatcher → agent (24/7 on VPS)
-3. AGENT     →  Hermes runtime + LLM + skills + tools (the brain)
-4. VAULT     →  markdown wiki (source of truth)
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/architecture-dark.svg">
+  <img src="docs/screenshots/architecture-light.svg" alt="Architecture: capture sources (browser, files, Discord bot, video and X) feed the raw/ inbox; auto_ingest.py (local mode) or the Hermes agent (always-on mode) processes it into the wiki/ folder; you read it in Obsidian or ask questions via Discord or Claude Code">
+</picture>
 
-This is a real agent loop, not a fixed script. Per ingest, the agent runs
+<sub>Blue: local mode · Purple: always-on mode · Green: shared by both. Diagram source: [`docs/diagrams/src/architecture.d2`](docs/diagrams/src/architecture.d2), built with [D2](https://d2lang.com).</sub>
+
+In always-on mode this is a real agent loop, not a fixed script. Per ingest, the agent runs
 **observe → plan → act → reason → persist → repeat** (typically 5–15 tool
 calls per source). It self-corrects on failure: if a fetch times out, the
 file stays in `raw/`, the watcher requeues it, the next run completes it.
