@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+  Source for docs/screenshots/before-after-{light,dark}.png.
+  Re-render with: node docs/demo/render.js  (needs Playwright; uses the Inter
+  and JetBrains Mono fonts if installed, system fonts otherwise)
+  Content comes from examples/demo-vault.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f6f7f9; --card: #ffffff; --border: #e3e6eb;
+    --text: #1d2129; --muted: #6b7280; --faint: #9aa1ac; --fade: #f6f7f9;
+    --link-bg: #eef2ff; --link: #4338ca; --code-bg: #1d2129; --code: #e5e7eb;
+    --source: #2f6fe4; --entity: #d98a0b; --concept: #16a34a; --synth: #9333ea;
+  }
+  .dark {
+    --bg: #0d1117; --panel: #161b22; --card: #1c2129; --border: #30363d;
+    --text: #e6edf3; --muted: #9aa4b0; --faint: #6e7781; --fade: #161b22;
+    --link-bg: #252c4a; --link: #a5b4fc; --code-bg: #010409; --code: #e6edf3;
+    --source: #4f8ef7; --entity: #f5a623; --concept: #4ade80; --synth: #c084fc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1200px; height: 680px; background: var(--bg); color: var(--text);
+    font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+    padding: 36px 40px; display: flex; flex-direction: column; gap: 24px;
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  h1 span { color: var(--muted); font-weight: 500; }
+  .brand { font-size: 14px; color: var(--faint); font-weight: 500; }
+  main { flex: 1; display: grid; grid-template-columns: 380px 150px 1fr; gap: 0; min-height: 0; }
+  .label { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  /* Before */
+  .doc {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 22px; height: 470px; overflow: hidden; position: relative;
+  }
+  .doc .path { font-size: 12px; color: var(--faint); margin-bottom: 14px; }
+  .doc h2 { font-size: 18px; font-weight: 650; margin-bottom: 12px; }
+  .doc p { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin-bottom: 11px; }
+  .doc::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 110px;
+    background: linear-gradient(to bottom, transparent, var(--fade));
+  }
+
+  /* Arrow */
+  .arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding-top: 28px; }
+  .arrow svg { width: 96px; height: 28px; }
+  .cmd {
+    background: var(--code-bg); color: var(--code); font-size: 11px; padding: 7px 9px;
+    border-radius: 7px; text-align: center; line-height: 1.45;
+  }
+  .arrow small { font-size: 12px; color: var(--faint); text-align: center; line-height: 1.4; }
+
+  /* After */
+  .notes { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 14px; }
+  .note {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px 15px; border-top: 4px solid var(--c); min-height: 0;
+  }
+  .note .kind { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--c); }
+  .note .path { font-size: 11px; color: var(--faint); margin: 3px 0 9px; }
+  .note h3 { font-size: 16px; font-weight: 650; margin-bottom: 6px; }
+  .note p { font-size: 12.5px; line-height: 1.5; color: var(--muted); margin-bottom: 10px; }
+  .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .links span {
+    font-size: 11.5px; background: var(--link-bg); color: var(--link);
+    padding: 3px 8px; border-radius: 999px; font-weight: 500;
+  }
+  .src { --c: var(--source); }
+  .ent { --c: var(--entity); }
+  .con { --c: var(--concept); }
+  .fm { font-size: 11px; color: var(--faint); margin-bottom: 8px; }
+  .fm b { color: var(--muted); font-weight: 500; }
+  footer { font-size: 13px; color: var(--muted); display: flex; gap: 22px; }
+  footer i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--c); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>One article in. <span>Linked notes out.</span></h1>
+    <div class="brand">🧠 Second Brain AI</div>
+  </header>
+
+  <main>
+    <section>
+      <div class="label">Before · what you saved</div>
+      <div class="doc">
+        <div class="path mono">raw/spaced-repetition-primer.md</div>
+        <h2>A Primer on Spaced Repetition</h2>
+        <p>If you review something right after learning it, you waste the review: you still remember it. If you wait too long, you have to relearn it from scratch. Spaced repetition schedules each review for the moment just before you would forget.</p>
+        <p>The idea goes back to Hermann Ebbinghaus, who measured his own forgetting in the 1880s and found that memory decays quickly at first and then levels off...</p>
+        <p>Modern flashcard software turns this into an algorithm. SuperMemo, written by Piotr Wozniak, introduced the SM-2 algorithm in 1987. Anki, a free and open-source app, uses a variant of it...</p>
+        <p>The method works best when each card makes you actively retrieve an answer rather than reread it...</p>
+      </div>
+    </section>
+
+    <section class="arrow">
+      <svg viewBox="0 0 96 28" fill="none">
+        <path d="M2 14 H86" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color: var(--faint)"/>
+        <path d="M76 4 L90 14 L76 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" style="color: var(--faint)"/>
+      </svg>
+      <div class="cmd mono">python3<br>auto_ingest.py</div>
+      <small>reads, extracts,<br>links to what<br>you already have</small>
+    </section>
+
+    <section>
+      <div class="label">After · what lands in your wiki</div>
+      <div class="notes">
+        <div class="note src">
+          <div class="kind">Source</div>
+          <div class="path mono">wiki/sources/</div>
+          <h3>A Primer on Spaced Repetition</h3>
+          <div class="fm mono"><b>confidence:</b> high</div>
+          <p>Summary, key points, and counter-arguments: the source says little about writing good cards.</p>
+          <div class="links"><span>Spaced Repetition</span><span>Active Recall</span><span>Piotr Wozniak</span></div>
+        </div>
+        <div class="note con">
+          <div class="kind">Concept</div>
+          <div class="path mono">wiki/concepts/</div>
+          <h3>Spaced Repetition</h3>
+          <div class="fm mono"><b>explored:</b> false</div>
+          <p>Review material at growing intervals, each timed just before you would forget it.</p>
+          <div class="links"><span>Hermann Ebbinghaus</span><span>Anki</span><span>SuperMemo</span></div>
+        </div>
+        <div class="note ent">
+          <div class="kind">Entity · person</div>
+          <div class="path mono">wiki/entities/</div>
+          <h3>Hermann Ebbinghaus</h3>
+          <p>German psychologist who ran the first systematic experiments on memory in the 1880s.</p>
+          <div class="links"><span>Spaced Repetition</span><span>A Primer on Spaced…</span></div>
+        </div>
+        <div class="note ent">
+          <div class="kind">Entity · tool</div>
+          <div class="path mono">wiki/entities/</div>
+          <h3>Anki</h3>
+          <p>Free, open-source flashcard app that schedules reviews with a variant of SM-2.</p>
+          <div class="links"><span>Spaced Repetition</span><span>SuperMemo</span><span>Active Recall</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="src"><i></i>source note</span>
+    <span class="con"><i></i>concept</span>
+    <span class="ent"><i></i>person or tool</span>
+    <span style="margin-left:auto">Links point to notes already in your vault, so every new source grows one connected graph.</span>
+  </footer>
+</body>
+</html>

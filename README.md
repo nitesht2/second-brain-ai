@@ -55,6 +55,13 @@ Total monthly cost runs **~$8–$15** for a single-person setup.
 
 ## ⚡ How it works
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/before-after-dark.png">
+  <img src="docs/screenshots/before-after-light.png" alt="Before and after: a saved article about spaced repetition becomes four linked wiki notes: a source note, a concept note, and entity notes for Hermann Ebbinghaus and Anki, each linking to the others">
+</picture>
+
+Under the hood, the always-on setup has four layers:
+
 ```
 1. CAPTURE   →  how things enter the brain (5 paths into raw/)
 2. PIPELINE  →  watcher → kanban → dispatcher → agent (24/7 on VPS)

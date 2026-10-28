@@ -7,6 +7,8 @@ Drop your screenshots here for the main README:
 - `ingest-terminal.png` — Terminal output of auto_ingest.py running
 - `query-result.png` — Claude Code running /second-brain-query
 - `lint-report.png` — /second-brain-lint report output
+- `before-after-light.png` / `before-after-dark.png` — Generated from
+  [`docs/demo/before-after.html`](../demo/before-after.html); re-render with `node docs/demo/render.js`
 - `demo.gif` — 15–20s GIF of the full flow (clip → ingest → graph update).
   Step-by-step recording guide: [`docs/demo/RECORDING.md`](../demo/RECORDING.md)
 
