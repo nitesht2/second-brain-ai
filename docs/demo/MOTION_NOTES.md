@@ -8,7 +8,7 @@ consistent as the project grows.
 | Output | Source | Rebuild |
 |---|---|---|
 | `docs/screenshots/banner.png` | `docs/demo/banner.html` | `node docs/demo/render.js` |
-| `docs/screenshots/before-after-{light,dark}.png` | `docs/demo/before-after.html` | `node docs/demo/render.js` |
+| `docs/screenshots/before-after.png` | `docs/demo/before-after.html` | `node docs/demo/render.js` |
 | `docs/screenshots/architecture-{light,dark}.svg` | `docs/diagrams/src/architecture.d2` | `python3 docs/diagrams/src/build.py` (needs [D2](https://d2lang.com)) |
 | `docs/screenshots/hero.{mp4,gif}` | `docs/demo/film/hero.html` + `film/graph.json` | `python3 docs/demo/film/graph.py` then `node docs/demo/film/render.js` |
 

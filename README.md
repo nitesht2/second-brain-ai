@@ -57,10 +57,7 @@ Total monthly cost runs **~$8–$15** for a single-person setup.
 
 ## ⚡ How it works
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/before-after-dark.png">
-  <img src="docs/screenshots/before-after-light.png" alt="Before and after: a saved article about spaced repetition becomes four linked wiki notes: a source note, a concept note, and entity notes for Hermann Ebbinghaus and Anki, each linking to the others">
-</picture>
+<img src="docs/screenshots/before-after.png" alt="Before and after: a saved article about spaced repetition becomes four linked wiki notes: a source note, a concept note, and entity notes for Hermann Ebbinghaus and Anki, each linking to the others">
 
 Under the hood, both modes share the same inbox and the same wiki. Only the worker in the middle changes:
 

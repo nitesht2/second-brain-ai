@@ -7,7 +7,7 @@ Drop your screenshots here for the main README:
 - `ingest-terminal.png` — Terminal output of auto_ingest.py running
 - `query-result.png` — Claude Code running /second-brain-query
 - `lint-report.png` — /second-brain-lint report output
-- `before-after-light.png` / `before-after-dark.png` — Generated from
+- `before-after.png` — Generated from
   [`docs/demo/before-after.html`](../demo/before-after.html); re-render with `node docs/demo/render.js`
 - `architecture-light.svg` / `architecture-dark.svg` — README architecture diagram, from
   [`docs/diagrams/src/architecture.d2`](../diagrams/src/architecture.d2); rebuild with `python3 docs/diagrams/src/build.py` (needs [D2](https://d2lang.com))
