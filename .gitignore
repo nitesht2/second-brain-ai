@@ -5,6 +5,7 @@
 
 # Obsidian
 .obsidian/
+!examples/demo-vault/.obsidian/
 
 # Personal vault content — never commit your actual notes
 # (root-level only, vault-template/ is still tracked)

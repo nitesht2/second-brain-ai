@@ -87,9 +87,7 @@ BRAND_DIR   = Path(os.environ.get(
     str(Path.home() / ".voice"),
 ))
 
-MODEL               = "deepseek-chat"     # placeholder, actual model from DEEPSEEK_MODEL
-TEMPERATURE     = 0.2                 # low = more consistent structure
-MAX_TOKENS      = 3000
+DRY_RUN         = False               # set from --dry-run in main()
 RAW_CHUNK       = 15000                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
 MIN_HOURS       = 24                  # skip if last run was less than this many hours ago
@@ -119,14 +117,8 @@ DEEPSEEK_API_KEY    = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL      = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_BASE_URL   = "https://api.deepseek.com/v1/chat/completions"
 
-TEMPERATURE         = 0.2
+TEMPERATURE         = 0.2                 # low = more consistent structure
 MAX_TOKENS          = 4000
-# Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
-# DeepSeek Flash for the rest of the calendar month so clips still
-# get processed - you just stop paying. Resets on the 1st of each month.
-
-# Running tallies for the current ingest session
-_SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,7 +130,10 @@ def should_run_today() -> bool:
     if not LAST_RUN_FILE.exists():
         return True
     import time
-    last = float(LAST_RUN_FILE.read_text().strip())
+    try:
+        last = float(LAST_RUN_FILE.read_text().strip())
+    except (ValueError, OSError):
+        return True  # unreadable/corrupt stamp: don't lock ingest out forever
     hours_since = (time.time() - last) / 3600
     if hours_since < MIN_HOURS:
         print(f"Last run was {hours_since:.1f}h ago (< {MIN_HOURS}h). Skipping.")
@@ -278,10 +273,9 @@ def fetch_github_readme(url: str) -> str:
         https://github.com/owner/repo/tree/main
         github.com/owner/repo  (no scheme)
     """
-    import re as _re
     # Normalize URL - strip scheme, trailing slashes, tree/branch paths
     clean = url.strip().rstrip("/")
-    clean = _re.sub(r'^https?://', '', clean)
+    clean = re.sub(r'^https?://', '', clean)
     parts = clean.split("/")  # ["github.com", "owner", "repo", ...]
     if len(parts) < 3 or parts[0] != "github.com":
         print(f"  ⚠ Not a valid GitHub repo URL: {url}")
@@ -534,6 +528,13 @@ def call_deepseek(prompt: str) -> str:
         raise RuntimeError(f"Unexpected DeepSeek API response: {e}")
 
 
+def missing_api_key() -> str:
+    """Return the name of the env var the configured provider needs, or "" if set."""
+    if PROVIDER == "deepseek":
+        return "" if DEEPSEEK_API_KEY else "DEEPSEEK_API_KEY"
+    return "" if OPENROUTER_API_KEY else "OPENROUTER_API_KEY"
+
+
 def call_llm(prompt: str) -> str:
     """Route to configured provider.
 
@@ -739,9 +740,9 @@ def write_wiki_entry(rel_path: str, content: str, replace: bool = False) -> bool
     # content, so refuse anything that resolves outside the vault
     # (absolute paths, wiki/../../ escapes).
     resolved = full_path.resolve()
-    vault_root = VAULT.resolve()
-    if not str(resolved).startswith(str(vault_root) + os.sep):
-        print(f"  ⚠ Skipping entry outside vault: {rel_path}")
+    wiki_root = WIKI_DIR.resolve()
+    if not str(resolved).startswith(str(wiki_root) + os.sep):
+        print(f"  ⚠ Skipping entry outside wiki/: {rel_path}")
         return False
 
     if full_path.exists():
@@ -765,8 +766,6 @@ def write_wiki_entry(rel_path: str, content: str, replace: bool = False) -> bool
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(content)
         return True        # new file
-
-
 
 
 
@@ -938,7 +937,9 @@ One paragraph: the non-obvious conclusion that ONLY emerges by reading these ent
 - Concrete action 2
 
 ## Sources Synthesized
-- [[{cluster_name.replace(' ', '-')}]]
+- [[Entry A]]
+- [[Entry B]]
+(one line per entry in this cluster, using its exact name)
 
 ## Generated
 {today}
@@ -1086,11 +1087,12 @@ def update_wiki_index():
             lines.append("*None yet - ingest some files to populate this section.*")
         lines.append("")
 
-    lines.insert(4, f"**Total entries: {total}**")
-    lines.insert(5, "")
+    lines.insert(5, f"**Total entries: {total}**")
+    lines.insert(6, "")
 
     index_path = WIKI_DIR / "index.md"
     if not DRY_RUN:
+        WIKI_DIR.mkdir(parents=True, exist_ok=True)
         index_path.write_text("\n".join(lines), encoding="utf-8")
         print(f"  ✓ wiki/index.md updated ({total} entries)")
     else:
@@ -1103,6 +1105,12 @@ def update_wiki_index():
 def main():
     global DRY_RUN
     DRY_RUN = "--dry-run" in sys.argv
+
+    # Every LLM call would fail, and a stamped run would then block retries
+    # for MIN_HOURS, so stop before touching anything.
+    if "--save" not in sys.argv and missing_api_key():
+        print(f"{missing_api_key()} is not set. Export it or add it to ~/.secondbrain.env")
+        sys.exit(1)
 
     # Synthesis mode -- bypass ingest entirely
     if "--synthesize" in sys.argv:
@@ -1133,11 +1141,9 @@ def main():
 
     PROCESSED.mkdir(parents=True, exist_ok=True)
 
-    # Frequency gate: skip if run too recently (launchd fires daily, script enforces 48h gap)
+    # Frequency gate: skip if run too recently (launchd fires daily, script enforces MIN_HOURS gap)
     if not should_run_today():
         return
-
-    
 
     raw_files = get_raw_files()
 
@@ -1152,7 +1158,7 @@ def main():
 
     if not raw_files:
         print("Second Brain ingest: nothing to process.")
-        record_run()   # still stamp so the 48h clock resets
+        record_run()   # still stamp so the MIN_HOURS clock resets
         update_wiki_index()  # keep index current even with no new files
         return
 
@@ -1228,9 +1234,6 @@ def main():
     # Always regenerate index so it reflects current vault state
     print("\n─── Updating wiki/index.md ───")
     update_wiki_index()
-
-    record_run()
-
 
 
 if __name__ == "__main__":

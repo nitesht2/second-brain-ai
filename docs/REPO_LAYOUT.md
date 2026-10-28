@@ -24,9 +24,15 @@ second-brain-ai/
 │                                            calls for backlinks / outlinks / search /
 │                                            find-path / hub-detection / vault stats.
 │
+├── examples/
+│   ├── README.md                          ← How to browse or re-ingest the demo
+│   └── demo-vault/                        ← Finished sample vault (learning &
+│                                            note-taking) with 2 pending raw files
+│
+├── tests/                                 ← pytest suite (python3 -m pytest tests)
+│
 ├── scripts/
-│   ├── clip.py                            ← VPS-side clipper (yt-dlp + whisper +
-│   │                                        captions, proxy-aware).
+│   ├── demo_reset.sh                      ← Copy the demo vault to ~/SecondBrainDemo
 │   ├── brain_clip.py                      ← Mac-side clipper (uses local Metal
 │   │                                        whisper-cli when available).
 │   ├── daily_digest.py                    ← Pulls GitHub trending / HN / model
@@ -40,7 +46,8 @@ second-brain-ai/
 │   │   ├── SCHEMA.template.md             ← Machine-readable knowledge schema
 │   │   │                                    (synced to <VAULT>/wiki/SCHEMA.md
 │   │   │                                    on the live box).
-│   │   ├── clip.py                        ← Synced from <VAULT>/scripts/
+│   │   ├── clip.py                        ← VPS-side clipper (yt-dlp + whisper +
+│   │   │                                    captions, proxy-aware).
 │   │   ├── clip_yt.py                     ← YouTube-only caption clipper
 │   │   ├── sb_watcher.sh                  ← inotify watcher script
 │   │   ├── secondbrain-watcher.service    ← systemd unit (raw/ inotify)
@@ -63,6 +70,10 @@ second-brain-ai/
 │   ├── KNOWLEDGE_MODEL.md                 ← Bi-temporal facts, contradictions, ADRs
 │   ├── SECURITY.md                        ← Secrets model, gateway lockdown
 │   ├── DESIGN.md                          ← Intentionally-not-included choices
+│   ├── demo/                              ← Sources for the README visuals (banner,
+│   │                                        before/after, hero film) + MOTION_NOTES.md
+│   ├── diagrams/src/                      ← D2 source for the architecture diagram
+│   ├── screenshots/                       ← Rendered README images and hero.gif/mp4
 │   ├── REPO_LAYOUT.md                     ← This file
 │   ├── VPS_DEPLOYMENT.md                  ← Long-form deployment notes
 │   └── diagrams/
@@ -99,7 +110,7 @@ If you're new to the codebase, read in this order:
 5. [`docs/SECURITY.md`](SECURITY.md) — secrets model before you fork
 6. [`docs/diagrams/architecture.html`](diagrams/architecture.html) — visual overview
 7. [`obsidian_mcp.py`](../obsidian_mcp.py) — read the actual MCP tool surface
-8. [`scripts/clip.py`](../scripts/clip.py) — read the deterministic clipping logic
+8. [`deploy/vps/clip.py`](../deploy/vps/clip.py) — read the deterministic clipping logic
 
 ## Where to make changes
 

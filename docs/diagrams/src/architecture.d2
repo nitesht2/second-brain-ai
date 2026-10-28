@@ -1,0 +1,141 @@
+# Architecture diagram for the README, written in D2 (https://d2lang.com).
+# {{TOKENS}} are filled in per theme by build.py, which renders light and
+# dark SVGs into docs/screenshots/.
+
+vars: {
+  d2-config: {
+    pad: 48
+    theme-overrides: {
+      N1: "{{TEXT}}"
+      N2: "{{MUTED}}"
+      N7: "{{BG}}"
+    }
+  }
+}
+
+grid-rows: 5
+vertical-gap: 12
+
+classes: {
+  step: {
+    label: ""
+    grid-rows: 1
+    horizontal-gap: 16
+    style: {
+      fill: transparent
+      stroke: transparent
+    }
+  }
+  tag: {
+    shape: text
+    width: 112
+    style: {
+      font-color: "{{MUTED}}"
+      font-size: 15
+      bold: true
+    }
+  }
+  card: {
+    shape: rectangle
+    width: 246
+    height: 84
+    style: {
+      fill: "{{CARD}}"
+      stroke: "{{BORDER}}"
+      stroke-width: 1
+      border-radius: 12
+      font-size: 17
+    }
+  }
+  half: { width: 508; height: 88 }
+  full: { width: 1032; height: 84 }
+  local: { style.stroke: "{{LOCAL}}"; style.stroke-width: 2 }
+  vps: { style.stroke: "{{VPS}}"; style.stroke-width: 2 }
+  shared: { style.stroke: "{{SHARED}}"; style.stroke-width: 2; style.fill: "{{PANEL}}" }
+}
+
+capture: {
+  class: step
+  tag: "1 · CAPTURE" { class: tag }
+  web: |md
+    **Browser**
+
+    Bookmarklet or Web Clipper
+  | { class: card }
+  files: |md
+    **Files**
+
+    .md, .pdf, or a link in .txt
+  | { class: card }
+  discord: |md
+    **Discord bot**
+
+    Paste a link from anywhere
+  | { class: [card; vps] }
+  media: |md
+    **Video and X**
+
+    YouTube, TikTok, threads
+  | { class: [card; vps] }
+}
+
+inbox: {
+  class: step
+  tag: "2 · INBOX" { class: tag }
+  raw: |md
+    **raw/**
+
+    Every source lands here. Done files move to processed/. Failures stay and retry.
+  | { class: [card; full; shared] }
+}
+
+process: {
+  class: step
+  tag: "3 · PROCESS" { class: tag }
+  local: |md
+    **auto_ingest.py** · local mode
+
+    Daily on your Mac. One LLM call per file, 1–3 linked notes.
+  | { class: [card; half; local] }
+  agent: |md
+    **Hermes agent** · always-on mode
+
+    24/7 on a VPS. Fetches, links, resolves contradictions.
+  | { class: [card; half; vps] }
+}
+
+vault: {
+  class: step
+  tag: "4 · WIKI" { class: tag }
+  wiki: |md
+    **wiki/** · plain markdown with [[wikilinks]]
+
+    sources/ · entities/ · concepts/ · synthesis/ · decisions/ · index.md
+  | { class: [card; full; shared] }
+}
+
+use: {
+  class: step
+  tag: "5 · USE IT" { class: tag }
+  obsidian: |md
+    **Obsidian**
+
+    Graph view and backlinks
+  | { class: [card; half] }
+  ask: |md
+    **Ask questions**
+
+    Discord bot or Claude Code commands
+  | { class: [card; half] }
+}
+
+capture.web -> inbox.raw: { style: { stroke: "{{EDGE}}"; stroke-width: 2 } }
+capture.files -> inbox.raw: { style: { stroke: "{{EDGE}}"; stroke-width: 2 } }
+capture.discord -> inbox.raw: { style: { stroke: "{{VPS}}"; stroke-width: 2 } }
+capture.media -> inbox.raw: { style: { stroke: "{{VPS}}"; stroke-width: 2 } }
+inbox.raw -> process.local: { style: { stroke: "{{LOCAL}}"; stroke-width: 2 } }
+inbox.raw -> process.agent: { style: { stroke: "{{VPS}}"; stroke-width: 2 } }
+process.local -> vault.wiki: { style: { stroke: "{{LOCAL}}"; stroke-width: 2 } }
+process.agent -> vault.wiki: { style: { stroke: "{{VPS}}"; stroke-width: 2 } }
+vault.wiki -> use.obsidian: { style: { stroke: "{{EDGE}}"; stroke-width: 2 } }
+vault.wiki -> use.ask: { style: { stroke: "{{EDGE}}"; stroke-width: 2 } }

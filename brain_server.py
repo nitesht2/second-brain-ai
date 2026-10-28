@@ -12,6 +12,7 @@ Usage:
 """
 
 import json
+import os
 import re
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -61,10 +62,8 @@ SETUP_HTML = """\
 </html>
 """
 
-RAW_DIR = Path.home() / "SecondBrain" / "raw"
+RAW_DIR = Path(os.environ.get("SECOND_BRAIN_PATH", str(Path.home() / "SecondBrain"))) / "raw"
 PORT = 7331
-
-YOUTUBE_DOMAINS = {"youtube.com", "youtu.be", "www.youtube.com", "m.youtube.com"}
 
 
 def filename_from_url(url: str, title: str) -> str:
@@ -111,18 +110,30 @@ class SaveHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        length = int(self.headers.get("Content-Length", 0))
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            length = -1
+        if length < 0:
+            self.send_response(400)
+            self._cors()
+            self.end_headers()
+            return
         body = self.rfile.read(length)
         try:
             data = json.loads(body)
-        except json.JSONDecodeError:
+        except ValueError:  # JSONDecodeError and UnicodeDecodeError
+            data = None
+        if not isinstance(data, dict):
             self.send_response(400)
             self._cors()
             self.end_headers()
             return
 
-        url = data.get("url", "").strip()
-        title = data.get("title", "").strip()
+        url = data.get("url")
+        title = data.get("title")
+        url = url.strip() if isinstance(url, str) else ""
+        title = title.strip() if isinstance(title, str) else ""
 
         if not url:
             self.send_response(400)

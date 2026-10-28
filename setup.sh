@@ -15,23 +15,24 @@ echo "================================="
 echo ""
 
 # Step 1: Create vault structure
-echo "📁 Step 1/7: Creating vault at $VAULT..."
+echo "📁 Step 1/6: Creating vault at $VAULT..."
 mkdir -p "$VAULT"/{raw/processed,raw/generated,wiki/{entities,concepts,sources,synthesis},wiki/episodic,wiki/projects,outputs}
 echo "    ✓ Done"
 
 # Step 2: Set up directories early (needed for script copies)
-echo "📋 Step 2/7: Setting up directories..."
+echo "📋 Step 2/6: Setting up directories..."
 mkdir -p "$HOME/.hermes/scripts"
 mkdir -p "$HOME/.hermes/data/feeds"
-echo '{}' > "$HOME/.hermes/data/feeds/seen.json"
+# Keep the digest's history on re-runs; only seed it on first install
+[ -f "$HOME/.hermes/data/feeds/seen.json" ] || echo '{}' > "$HOME/.hermes/data/feeds/seen.json"
 echo "    ✓ Done"
 
 # Step 3: Copy vault template and scripts
-echo "📋 Step 3/7: Copying vault template and scripts..."
-cp -n "$REPO_DIR/vault-template/AGENTS.md" "$VAULT/" 2>/dev/null || true
+echo "📋 Step 3/6: Copying vault template and scripts..."
 cp -n "$REPO_DIR/vault-template/wiki/index.md" "$VAULT/wiki/" 2>/dev/null || true
 cp -n "$REPO_DIR/vault-template/wiki/log.md" "$VAULT/wiki/" 2>/dev/null || true
 cp "$REPO_DIR/auto_ingest.py" "$VAULT/"
+cp "$REPO_DIR/brain_server.py" "$VAULT/"
 cp "$REPO_DIR/scripts/daily_digest.py" "$HOME/.hermes/scripts/"
 cp "$REPO_DIR/scripts/file_watcher.sh" "$HOME/.hermes/scripts/"
 cp "$REPO_DIR/scripts/weekly_review.py" "$HOME/.hermes/scripts/"
@@ -39,7 +40,7 @@ chmod +x "$HOME/.hermes/scripts/file_watcher.sh"
 echo "    ✓ Done"
 
 # Step 4: Install Python dependencies
-echo "🐍 Step 4/7: Installing Python dependencies..."
+echo "🐍 Step 4/6: Installing Python dependencies..."
 if [ -f "$REPO_DIR/requirements.txt" ]; then
     pip3 install --break-system-packages -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
         pip3 install -r "$REPO_DIR/requirements.txt" 2>/dev/null || \
@@ -48,18 +49,23 @@ fi
 echo "    ✓ Done"
 
 # Step 5: Install launchd services
-echo "⏰ Step 5/7: Installing launchd services..."
+echo "⏰ Step 5/6: Installing launchd services..."
+PYTHON_BIN="$(command -v python3)"
+mkdir -p "$LAUNCHD_DIR"
 for plist in "$REPO_DIR/launchd/"*.plist; do
     name="$(basename "$plist")"
-    # Replace $HOME in plist with actual home path
-    sed "s|\$HOME|$HOME|g" "$plist" > "$LAUNCHD_DIR/$name"
+    # The reference plists use placeholder paths; point them at this machine
+    sed -e "s|/Users/YOUR_USER/Projects/second-brain-ai|$REPO_DIR|g" \
+        -e "s|/Users/YOUR_USER|$HOME|g" \
+        -e "s|<string>/opt/homebrew/bin/python3</string>|<string>$PYTHON_BIN</string>|g" \
+        "$plist" > "$LAUNCHD_DIR/$name"
     launchctl unload "$LAUNCHD_DIR/$name" 2>/dev/null || true
     launchctl load "$LAUNCHD_DIR/$name"
     echo "    ✓ $name"
 done
 
 # Step 6: Set up file watcher
-echo "👀 Step 5/6: Setting up file watcher..."
+echo "👀 Step 6/6: Setting up file watcher..."
 if command -v fswatch &>/dev/null; then
     echo "    ✓ fswatch already installed"
 else
@@ -68,8 +74,8 @@ else
 fi
 echo "    ✓ File watcher installed at ~/.hermes/scripts/file_watcher.sh"
 
-# Step 7: Check prerequisites
-echo "🔍 Step 6/6: Checking prerequisites..."
+# Check prerequisites
+echo "🔍 Checking prerequisites..."
 
 MISSING=0
 
@@ -91,7 +97,7 @@ if [ -f "$HERMES_BIN" ]; then
     echo "    ✓ Hermes Agent installed"
 else
     echo "    ⚠ Hermes Agent not found at $HERMES_BIN"
-    echo "      Install: curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash"
+    echo "      Install: curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash"
 fi
 
 if command -v fswatch &>/dev/null; then
