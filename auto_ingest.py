@@ -87,9 +87,7 @@ BRAND_DIR   = Path(os.environ.get(
     str(Path.home() / ".voice"),
 ))
 
-MODEL               = "deepseek-chat"     # placeholder, actual model from DEEPSEEK_MODEL
-TEMPERATURE     = 0.2                 # low = more consistent structure
-MAX_TOKENS      = 3000
+DRY_RUN         = False               # set from --dry-run in main()
 RAW_CHUNK       = 15000                # chars fed to model per file
 LAST_RUN_FILE   = VAULT / "outputs" / ".last_ingest_run"
 MIN_HOURS       = 24                  # skip if last run was less than this many hours ago
@@ -119,14 +117,8 @@ DEEPSEEK_API_KEY    = os.environ.get("DEEPSEEK_API_KEY", "")
 DEEPSEEK_MODEL      = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 DEEPSEEK_BASE_URL   = "https://api.deepseek.com/v1/chat/completions"
 
-TEMPERATURE         = 0.2
+TEMPERATURE         = 0.2                 # low = more consistent structure
 MAX_TOKENS          = 4000
-# Monthly cumulative cap. Once crossed, the pipeline auto-downgrades to
-# DeepSeek Flash for the rest of the calendar month so clips still
-# get processed - you just stop paying. Resets on the 1st of each month.
-
-# Running tallies for the current ingest session
-_SESSION_TOKENS = {"input": 0, "output": 0, "calls": 0}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,7 +130,10 @@ def should_run_today() -> bool:
     if not LAST_RUN_FILE.exists():
         return True
     import time
-    last = float(LAST_RUN_FILE.read_text().strip())
+    try:
+        last = float(LAST_RUN_FILE.read_text().strip())
+    except (ValueError, OSError):
+        return True  # unreadable/corrupt stamp: don't lock ingest out forever
     hours_since = (time.time() - last) / 3600
     if hours_since < MIN_HOURS:
         print(f"Last run was {hours_since:.1f}h ago (< {MIN_HOURS}h). Skipping.")
@@ -278,10 +273,9 @@ def fetch_github_readme(url: str) -> str:
         https://github.com/owner/repo/tree/main
         github.com/owner/repo  (no scheme)
     """
-    import re as _re
     # Normalize URL - strip scheme, trailing slashes, tree/branch paths
     clean = url.strip().rstrip("/")
-    clean = _re.sub(r'^https?://', '', clean)
+    clean = re.sub(r'^https?://', '', clean)
     parts = clean.split("/")  # ["github.com", "owner", "repo", ...]
     if len(parts) < 3 or parts[0] != "github.com":
         print(f"  ⚠ Not a valid GitHub repo URL: {url}")
@@ -739,9 +733,9 @@ def write_wiki_entry(rel_path: str, content: str, replace: bool = False) -> bool
     # content, so refuse anything that resolves outside the vault
     # (absolute paths, wiki/../../ escapes).
     resolved = full_path.resolve()
-    vault_root = VAULT.resolve()
-    if not str(resolved).startswith(str(vault_root) + os.sep):
-        print(f"  ⚠ Skipping entry outside vault: {rel_path}")
+    wiki_root = WIKI_DIR.resolve()
+    if not str(resolved).startswith(str(wiki_root) + os.sep):
+        print(f"  ⚠ Skipping entry outside wiki/: {rel_path}")
         return False
 
     if full_path.exists():
@@ -765,8 +759,6 @@ def write_wiki_entry(rel_path: str, content: str, replace: bool = False) -> bool
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(content)
         return True        # new file
-
-
 
 
 
@@ -1133,11 +1125,9 @@ def main():
 
     PROCESSED.mkdir(parents=True, exist_ok=True)
 
-    # Frequency gate: skip if run too recently (launchd fires daily, script enforces 48h gap)
+    # Frequency gate: skip if run too recently (launchd fires daily, script enforces MIN_HOURS gap)
     if not should_run_today():
         return
-
-    
 
     raw_files = get_raw_files()
 
@@ -1152,7 +1142,7 @@ def main():
 
     if not raw_files:
         print("Second Brain ingest: nothing to process.")
-        record_run()   # still stamp so the 48h clock resets
+        record_run()   # still stamp so the MIN_HOURS clock resets
         update_wiki_index()  # keep index current even with no new files
         return
 
@@ -1228,9 +1218,6 @@ def main():
     # Always regenerate index so it reflects current vault state
     print("\n─── Updating wiki/index.md ───")
     update_wiki_index()
-
-    record_run()
-
 
 
 if __name__ == "__main__":
