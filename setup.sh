@@ -23,7 +23,8 @@ echo "    ✓ Done"
 echo "📋 Step 2/6: Setting up directories..."
 mkdir -p "$HOME/.hermes/scripts"
 mkdir -p "$HOME/.hermes/data/feeds"
-echo '{}' > "$HOME/.hermes/data/feeds/seen.json"
+# Keep the digest's history on re-runs; only seed it on first install
+[ -f "$HOME/.hermes/data/feeds/seen.json" ] || echo '{}' > "$HOME/.hermes/data/feeds/seen.json"
 echo "    ✓ Done"
 
 # Step 3: Copy vault template and scripts
