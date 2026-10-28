@@ -87,6 +87,8 @@ There are two ways to run Second Brain AI. Both write the same markdown wiki, so
 
 **New here? Start with local mode.** You'll have a working wiki in five minutes and can decide later whether you want the always-on setup.
 
+**Just want to look first?** Open [`examples/demo-vault`](examples/) in Obsidian. It's a finished sample wiki on learning and note-taking, with no setup or API key needed.
+
 ---
 
 ## 💻 Local quick start (Mac, 5 minutes)

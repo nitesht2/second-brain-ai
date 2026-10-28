@@ -937,7 +937,9 @@ One paragraph: the non-obvious conclusion that ONLY emerges by reading these ent
 - Concrete action 2
 
 ## Sources Synthesized
-- [[{cluster_name.replace(' ', '-')}]]
+- [[Entry A]]
+- [[Entry B]]
+(one line per entry in this cluster, using its exact name)
 
 ## Generated
 {today}
@@ -1085,8 +1087,8 @@ def update_wiki_index():
             lines.append("*None yet - ingest some files to populate this section.*")
         lines.append("")
 
-    lines.insert(4, f"**Total entries: {total}**")
-    lines.insert(5, "")
+    lines.insert(5, f"**Total entries: {total}**")
+    lines.insert(6, "")
 
     index_path = WIKI_DIR / "index.md"
     if not DRY_RUN:

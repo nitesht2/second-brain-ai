@@ -1,0 +1,13 @@
+> Sample text written for the Second Brain AI demo vault.
+
+Notes on the Feynman Technique
+
+The method, named after physicist Richard Feynman:
+1. Pick a concept.
+2. Explain it in plain language as if teaching someone new to the subject.
+3. Wherever you stall or reach for jargon, that is a gap. Go back to the source.
+4. Simplify and use an analogy.
+
+Why it works: explaining forces retrieval and exposes the illusion of understanding you get from rereading.
+
+Note to self: Feynman never wrote this down as a "technique". The name and the four steps were packaged later by other people, based on how he described learning and teaching.

@@ -24,7 +24,15 @@ second-brain-ai/
 │                                            calls for backlinks / outlinks / search /
 │                                            find-path / hub-detection / vault stats.
 │
+├── examples/
+│   ├── README.md                          ← How to browse or re-ingest the demo
+│   └── demo-vault/                        ← Finished sample vault (learning &
+│                                            note-taking) with 2 pending raw files
+│
+├── tests/                                 ← pytest suite (python3 -m pytest tests)
+│
 ├── scripts/
+│   ├── demo_reset.sh                      ← Copy the demo vault to ~/SecondBrainDemo
 │   ├── brain_clip.py                      ← Mac-side clipper (uses local Metal
 │   │                                        whisper-cli when available).
 │   ├── daily_digest.py                    ← Pulls GitHub trending / HN / model

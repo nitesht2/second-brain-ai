@@ -7,7 +7,8 @@ Drop your screenshots here for the main README:
 - `ingest-terminal.png` — Terminal output of auto_ingest.py running
 - `query-result.png` — Claude Code running /second-brain-query
 - `lint-report.png` — /second-brain-lint report output
-- `demo.gif` — Optional: 10s GIF of the full flow (clip → ingest → graph update)
+- `demo.gif` — 15–20s GIF of the full flow (clip → ingest → graph update).
+  Step-by-step recording guide: [`docs/demo/RECORDING.md`](../demo/RECORDING.md)
 
 The README references these files with:
 ```markdown
