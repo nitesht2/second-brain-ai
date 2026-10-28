@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!--
+  Hero film for the README: one saved article becomes linked notes that join
+  the graph. Every frame is a pure function of time: window.seek(t) sets the
+  whole scene, nothing animates on its own. Render with:
+    node docs/demo/film/render.js
+  Open this file in a browser to preview: Space plays, arrow keys step.
+  Content comes from examples/demo-vault (raw/evergreen-notes.md and the
+  notes an ingest of it would create); graph.json is from film/graph.py.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../fonts/fonts.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #060a16; }
+  #stage {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: #060a16; color: #e8edf7;
+    font-family: Inter, -apple-system, sans-serif;
+  }
+  #grid {
+    position: absolute; inset: -50%;
+    background-image:
+      linear-gradient(rgba(120,150,255,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,150,255,0.07) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(ellipse 40% 45% at 50% 50%, #000 30%, transparent 100%);
+  }
+  #glow {
+    position: absolute; left: 50%; top: 50%; width: 1500px; height: 900px; transform: translate(-50%,-50%);
+    background: radial-gradient(ellipse at center, rgba(56,105,255,0.24), rgba(56,105,255,0.06) 45%, transparent 70%);
+  }
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 960px 540px; }
+
+  /* graph */
+  #edges { position: absolute; left: 0; top: 0; overflow: visible; }
+  .node { position: absolute; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 10px color-mix(in srgb, var(--c) 14%, transparent); }
+  .label { position: absolute; transform: translate(-50%, 0); white-space: nowrap; font-size: 46px; font-weight: 500; color: #c3cee3; text-shadow: 0 2px 12px #060a16; }
+
+  /* article */
+  .card {
+    position: absolute; border-radius: 22px; overflow: hidden;
+    background: linear-gradient(180deg, rgba(28,38,64,0.92), rgba(15,21,39,0.94));
+    border: 1px solid rgba(150,175,255,0.16);
+    box-shadow: 0 40px 90px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  #article { left: 470px; top: 260px; width: 980px; height: 560px; }
+  #article .inner { position: absolute; inset: 0; padding: 46px 56px; }
+  .path { font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 22px; color: #7f8db0; }
+  #article h2 { margin-top: 20px; font-size: 52px; font-weight: 600; letter-spacing: -0.02em; }
+  #article p { margin-top: 22px; font-size: 27px; line-height: 1.55; color: #b5c0d8; }
+  .hl { position: relative; color: #e8edf7; white-space: nowrap; }
+  .hl::before {
+    content: ""; position: absolute; left: -4px; right: -4px; top: 6%; bottom: 2%; z-index: -1;
+    border-radius: 6px; background: rgba(79,142,247,0.32); transform-origin: left center; transform: scaleX(var(--s, 0));
+  }
+  #chip {
+    position: absolute; right: 40px; top: 36px; padding: 12px 22px; border-radius: 12px;
+    font-size: 24px; font-weight: 600; color: #fff; background: #e5484d; white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(229,72,77,0.35);
+  }
+  #chip .ok { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1f9d55; opacity: 0; }
+
+  /* notes */
+  .note .content { position: absolute; inset: 0; padding: 30px 34px; }
+  .note .kind { font-size: 21px; font-weight: 600; color: var(--c); }
+  .note .path { margin-top: 6px; font-size: 19px; }
+  .note h3 { margin-top: 18px; font-size: 34px; line-height: 1.15; font-weight: 600; letter-spacing: -0.015em; }
+  .note .fm { margin-top: 10px; font-family: ui-monospace, monospace; font-size: 19px; color: #7f8db0; }
+  .note .links { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .note .links span { font-size: 20px; font-weight: 500; color: #a9bfff; background: rgba(79,110,247,0.18); padding: 6px 13px; border-radius: 999px; }
+  .note { border-top: 4px solid var(--c); }
+
+  #cursor { position: absolute; left: 0; top: 0; width: 46px; height: 46px; transform-origin: 6px 4px; }
+
+  /* end title */
+  #title { position: absolute; left: 0; right: 0; top: 382px; text-align: center; }
+  #title h1 { font-size: 128px; line-height: 1.02; font-weight: 600; letter-spacing: -0.035em; }
+  #title h1 .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0 0.04em 0.12em; margin-bottom: -0.12em; }
+  #title h1 .w > span { display: inline-block; }
+  #title em { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-weight: 400; font-size: 1.14em; letter-spacing: -0.01em;
+              background: linear-gradient(180deg, #fff 30%, #9db8ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #url { margin-top: 34px; font-size: 30px; color: #8a97b3; }
+
+  #hud { position: fixed; left: 8px; bottom: 8px; font: 12px monospace; color: #888; }
+  body.render #hud { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="glow"></div>
+  <div id="grid"></div>
+  <div id="cam">
+    <svg id="edges" width="1920" height="1080"></svg>
+    <div id="nodes"></div>
+
+    <div class="card" id="article">
+      <div class="inner">
+        <div class="path">raw/evergreen-notes.md</div>
+        <h2>Evergreen Notes</h2>
+        <p><span class="hl" id="h-andy">Andy Matuschak</span>, a researcher who writes about tools for thought, uses the term <span class="hl" id="h-ever">"evergreen notes"</span> for notes written to evolve and accumulate value over time.</p>
+        <p>That makes evergreen notes a cousin of the <span class="hl" id="h-feyn">Feynman Technique</span>. And rewriting an idea from memory, instead of copying it, is <span class="hl" id="h-recall">active recall</span>.</p>
+      </div>
+      <div id="chip">→ Brain<div class="ok">✓ Saved</div></div>
+    </div>
+
+    <div class="card note" id="n-src" style="--c:#4f8ef7">
+      <div class="content">
+        <div class="kind">Source</div><div class="path">wiki/sources/</div>
+        <h3>Matuschak on Evergreen Notes</h3>
+        <div class="fm">confidence: high</div>
+        <div class="links"><span>Evergreen Notes</span><span>Andy Matuschak</span></div>
+      </div>
+    </div>
+    <div class="card note" id="n-con" style="--c:#4ade80">
+      <div class="content">
+        <div class="kind">Concept</div><div class="path">wiki/concepts/</div>
+        <h3>Evergreen Notes</h3>
+        <div class="fm">explored: false</div>
+        <div class="links"><span>Zettelkasten</span><span>Feynman Technique</span><span>Active Recall</span></div>
+      </div>
+    </div>
+    <div class="card note" id="n-per" style="--c:#f5a623">
+      <div class="content">
+        <div class="kind">Person</div><div class="path">wiki/entities/</div>
+        <h3>Andy Matuschak</h3>
+        <div class="fm">confidence: medium</div>
+        <div class="links"><span>Evergreen Notes</span></div>
+      </div>
+    </div>
+  </div>
+
+  <svg id="cursor" viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.4-7.6L20.5 11z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg>
+
+  <div id="title">
+    <h1><span class="w"><span>Everything</span></span> <span class="w"><span>you</span></span> <span class="w"><span>read,</span></span><br><span class="w"><span><em>connected.</em></span></span></h1>
+    <div id="url">github.com/nitesht2/second-brain-ai</div>
+  </div>
+</div>
+<div id="hud"></div>
+
+<script>
+const DURATION = 12.5;
+const COLORS = { sources: "#4f8ef7", entities: "#f5a623", concepts: "#4ade80", synthesis: "#c084fc" };
+
+// ── easing and timing helpers ───────────────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const outExpo = (x) => (x >= 1 ? 1 : 1 - Math.pow(2, -10 * x));     // lands: fast, long tail
+const inCubic = (x) => x * x * x;                                     // leaves: accelerates
+const inOutCubic = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+const $ = (id) => document.getElementById(id);
+
+// ── build the graph once ────────────────────────────────────────────────────
+let G, nodeEls = {}, labelEls = {}, edgeEls = [];
+const LABELS = ["Evergreen Notes", "Andy Matuschak", "Zettelkasten", "Feynman Technique", "Active Recall", "Spaced Repetition"];
+
+async function build() {
+  G = await (await fetch("graph.json")).json();
+  const byId = Object.fromEntries(G.nodes.map((n) => [n.id, n]));
+  const svg = $("edges");
+  for (const e of G.edges) {
+    const a = byId[e.a], b = byId[e.b];
+    const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    l.setAttribute("x1", a.x); l.setAttribute("y1", a.y); l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    l.setAttribute("stroke-dasharray", len); l.setAttribute("stroke-width", e.new ? 5 : 3);
+    l.setAttribute("stroke", e.new ? "#9db8ff" : "#3a4566");
+    svg.appendChild(l);
+    edgeEls.push({ el: l, e, a, b, len });
+  }
+  for (const n of G.nodes) {
+    const d = document.createElement("div");
+    const r = 13 + n.deg * 2.2;
+    d.className = "node"; d.style.setProperty("--c", COLORS[n.kind]);
+    d.style.width = d.style.height = 2 * r + "px";
+    d.style.left = n.x - r + "px"; d.style.top = n.y - r + "px";
+    $("nodes").appendChild(d); nodeEls[n.id] = { el: d, n, r };
+    if (LABELS.includes(n.id)) {
+      const lab = document.createElement("div");
+      lab.className = "label"; lab.textContent = n.id;
+      lab.style.left = n.x + "px"; lab.style.top = n.y + r + 14 + "px";
+      $("nodes").appendChild(lab); labelEls[n.id] = lab;
+    }
+  }
+  // remember where the highlighted phrases sit inside the article at rest
+  window.PHR = {};
+  for (const id of ["h-andy", "h-ever"]) {
+    const r = $(id).getBoundingClientRect(), s = $("stage").getBoundingClientRect();
+    PHR[id] = { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height };
+  }
+}
+
+// ── rect helpers for cards that grow out of something ───────────────────────
+function setRect(el, r) {
+  el.style.left = r.x + "px"; el.style.top = r.y + "px";
+  el.style.width = r.w + "px"; el.style.height = r.h + "px";
+}
+const mixRect = (a, b, k) => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k) });
+const ARTICLE = { x: 470, y: 260, w: 980, h: 560 };
+const SLOT = { src: { x: 150, y: 380, w: 500, h: 310 }, con: { x: 710, y: 380, w: 500, h: 310 }, per: { x: 1270, y: 380, w: 500, h: 310 } };
+const NODE_OF = { src: "Matuschak on Evergreen Notes", con: "Evergreen Notes", per: "Andy Matuschak" };
+
+// ── the film ────────────────────────────────────────────────────────────────
+window.seek = (t) => {
+  // camera: tiny push during beat 1, pull back for the graph, slow drift at the end
+  let zoom = 1, cx = 0, cy = 0;
+  zoom *= lerp(1, 1.03, inOutCubic(prog(t, 0.4, 3.0)));
+  const pull = inOutCubic(prog(t, 6.2, 7.8));
+  zoom = lerp(zoom, 0.5, pull);
+  cy = lerp(0, -40, pull);
+  zoom *= lerp(1, 1.04, prog(t, 7.8, DURATION));
+  $("cam").style.transform = `translate(${cx}px, ${cy}px) scale(${zoom})`;
+  $("grid").style.transform = `scale(${0.75 + zoom * 0.25})`;
+
+  // beat 1: the article lands, already moving, decelerating from oversize
+  const enter = outExpo(prog(t, 0, 0.7));
+  const art = $("article");
+  const toSource = prog(t, 3.0, 3.55);
+  if (t < 3.0) {
+    setRect(art, ARTICLE);
+    art.style.transform = `translateY(${lerp(320, 0, enter)}px) scale(${lerp(1.14, 1, enter)})`;
+    art.style.opacity = 1;
+  } else {
+    // handoff: the article itself becomes the source note
+    setRect(art, mixRect(ARTICLE, SLOT.src, outExpo(toSource)));
+    art.style.transform = "none";
+    art.style.opacity = toSource >= 1 ? 0 : 1;
+  }
+  art.querySelector(".inner").style.opacity = 1 - prog(t, 3.1, 3.3);
+  $("chip").style.opacity = 1 - prog(t, 3.0, 3.15);
+
+  // cursor: enters oversize, parks, presses, leaves
+  const cur = $("cursor");
+  const chipX = 470 + 980 - 120, chipY = 260 + 62;
+  const cin = outExpo(prog(t, 1.0, 1.55));
+  const cout = inCubic(prog(t, 2.25, 2.7));
+  const press = t >= 1.7 && t < 1.8 ? 0.86 : 1;
+  const cx2 = lerp(1500, chipX, cin) + lerp(0, 520, cout), cy2 = lerp(1150, chipY, cin) + lerp(0, 600, cout);
+  cur.style.transform = `translate(${cx2}px, ${cy2}px) scale(${lerp(2.4, 1, cin) * press})`;
+  cur.style.display = t > 1.0 && t < 2.7 ? "block" : "none";
+  $("chip").style.transform = `scale(${t >= 1.7 && t < 1.8 ? 0.92 : 1})`;
+  $("chip").querySelector(".ok").style.opacity = t >= 1.8 ? 1 : 0;
+
+  // highlights sweep across the phrases the AI will pull out
+  ["h-andy", "h-ever", "h-feyn", "h-recall"].forEach((id, i) => {
+    $(id).style.setProperty("--s", outCubic(prog(t, 2.0 + i * 0.16, 2.45 + i * 0.16)));
+  });
+
+  // beat 2: notes grow out of their phrases (or out of the article, for the source)
+  const grow = (key, el, from, a) => {
+    const k = outExpo(prog(t, a, a + 0.6));
+    el.style.display = t >= a ? "block" : "none";
+    if (t < a) return;
+    setRect(el, mixRect(from, SLOT[key], k));
+    el.querySelector(".content").style.opacity = prog(t, a + 0.28, a + 0.5);
+  };
+  grow("src", $("n-src"), SLOT.src, 3.5);
+  grow("con", $("n-con"), PHR["h-ever"], 3.35);
+  grow("per", $("n-per"), PHR["h-andy"], 3.5);
+  // links arrive whole-word, a few frames apart
+  [["n-src", 4.3], ["n-con", 4.55], ["n-per", 4.9]].forEach(([id, a]) => {
+    [...$(id).querySelectorAll(".links span")].forEach((s, i) => {
+      const k = outExpo(prog(t, a + i * 0.18, a + i * 0.18 + 0.35));
+      s.style.opacity = k > 0 ? 1 : 0;
+      s.style.transform = `translateY(${lerp(18, 0, k)}px)`;
+    });
+  });
+
+  // beat 3: cards collapse into their nodes while the graph comes up around them
+  const collapse = inOutCubic(prog(t, 6.4, 7.6));
+  for (const key of ["src", "con", "per"]) {
+    const el = $("n-" + key);
+    if (t < 6.4) { el.style.borderRadius = "22px"; continue; }
+    const n = nodeEls[NODE_OF[key]];
+    const target = { x: n.n.x - n.r, y: n.n.y - n.r, w: 2 * n.r, h: 2 * n.r };
+    setRect(el, mixRect(SLOT[key], target, collapse));
+    el.style.borderRadius = lerp(22, n.r, collapse) + "px";
+    el.querySelector(".content").style.opacity = 1 - prog(t, 6.4, 6.75);
+    el.style.display = collapse >= 1 ? "none" : "block";
+  }
+  for (const { el, n, r } of Object.values(nodeEls)) {
+    const dist = Math.hypot(n.x - 960, n.y - 540);
+    const a = n.new ? 7.45 : 6.5 + dist / 2600;
+    const k = outExpo(prog(t, a, a + 0.5));
+    el.style.opacity = k > 0 ? 1 : 0;
+    el.style.transform = `scale(${lerp(0.2, 1, k)})`;
+  }
+  for (const [id, lab] of Object.entries(labelEls)) {
+    const n = nodeEls[id].n;
+    const a = n.new ? 7.9 : 8.6;
+    const k = outExpo(prog(t, a, a + 0.4));
+    lab.style.opacity = k * (1 - prog(t, 9.8, 10.3));
+    lab.style.transform = `translate(-50%, ${lerp(14, 0, k)}px)`;
+  }
+  for (const { el, e, a, b, len } of edgeEls) {
+    let k;
+    if (e.new) k = outCubic(prog(t, 7.7 + (e.a.length % 5) * 0.12, 8.5 + (e.a.length % 5) * 0.12));
+    else {
+      const d = Math.min(Math.hypot(a.x - 960, a.y - 540), Math.hypot(b.x - 960, b.y - 540));
+      const s = 6.7 + d / 2600;
+      k = outCubic(prog(t, s, s + 0.6));
+    }
+    el.setAttribute("stroke-dashoffset", len * (1 - k));
+    el.style.opacity = k > 0 ? 1 : 0;
+  }
+
+  // beat 4: the graph steps back, the line lands word by word
+  const dim = inOutCubic(prog(t, 9.9, 10.6));
+  $("nodes").style.opacity = lerp(1, 0.32, dim);
+  $("edges").style.opacity = lerp(1, 0.32, dim);
+  [...document.querySelectorAll("#title .w > span")].forEach((w, i) => {
+    const k = outExpo(prog(t, 10.1 + i * 0.17, 10.1 + i * 0.17 + 0.6));
+    w.style.transform = `translateY(${lerp(110, 0, k)}%)`;
+  });
+  $("title").style.display = t >= 10.1 ? "block" : "none";
+  const u = outExpo(prog(t, 10.95, 11.5));
+  $("url").style.opacity = u; $("url").style.transform = `translateY(${lerp(16, 0, u)}px)`;
+
+  $("hud").textContent = t.toFixed(2) + "s";
+};
+
+// ── preview controls (render never uses these) ──────────────────────────────
+let playing = false, t0 = 0, tNow = 0;
+function frame(ts) { if (!playing) return; tNow = ((ts - t0) / 1000) % DURATION; seek(tNow); requestAnimationFrame(frame); }
+addEventListener("keydown", (e) => {
+  if (e.code === "Space") { playing = !playing; t0 = performance.now() - tNow * 1000; requestAnimationFrame(frame); }
+  if (e.code === "ArrowRight") { tNow = Math.min(DURATION, tNow + 1 / 30); seek(tNow); }
+  if (e.code === "ArrowLeft") { tNow = Math.max(0, tNow - 1 / 30); seek(tNow); }
+});
+
+document.fonts.ready.then(build).then(() => { seek(0); window.ready = true; });
+</script>
+</body>
+</html>

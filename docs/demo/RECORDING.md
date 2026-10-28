@@ -1,4 +1,6 @@
-# Recording the README demo GIF
+# Recording a real screen demo
+
+The animated hero at the top of the README (`docs/screenshots/hero.gif`) is built in code, see [MOTION_NOTES.md](MOTION_NOTES.md). This guide is for a real screen recording of Obsidian, which makes good proof next to it (a launch post, the README's "What the agent writes" section).
 
 Goal: a 15–20 second loop that shows the whole idea: **save a link → run ingest → the graph grows.**
 
@@ -29,7 +31,7 @@ The ingest takes longer than 6 seconds in real time. Speed it up in editing, or 
 
 - Target under 5 MB so GitHub shows it inline: 960px wide, 12–15 fps
 - Convert a screen recording with [gifski](https://gif.ski): `gifski --fps 12 --width 960 -o docs/screenshots/demo.gif recording.mov`
-- Save as `docs/screenshots/demo.gif`. The README will reference that path.
+- Save as `docs/screenshots/demo.gif`.
 - Also keep the `.mp4`. X and LinkedIn play video better than GIFs.
 
 ## Still screenshots to grab while you're set up

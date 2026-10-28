@@ -1,0 +1,473 @@
+{
+ "nodes": [
+  {
+   "id": "A Primer on Spaced Repetition",
+   "kind": "sources",
+   "x": 2296.1,
+   "y": 844.9,
+   "deg": 6,
+   "new": false
+  },
+  {
+   "id": "Active Recall",
+   "kind": "concepts",
+   "x": 1750.3,
+   "y": 469.9,
+   "deg": 7,
+   "new": false
+  },
+  {
+   "id": "Andy Matuschak",
+   "kind": "entities",
+   "x": 614.4,
+   "y": 0.9,
+   "deg": 2,
+   "new": true
+  },
+  {
+   "id": "Anki",
+   "kind": "entities",
+   "x": 1929.0,
+   "y": 812.6,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Atomic Notes",
+   "kind": "concepts",
+   "x": 592.2,
+   "y": 921.9,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Attention Residue",
+   "kind": "concepts",
+   "x": -540.0,
+   "y": 679.1,
+   "deg": 3,
+   "new": false
+  },
+  {
+   "id": "Cal Newport",
+   "kind": "entities",
+   "x": -406.6,
+   "y": 940.4,
+   "deg": 4,
+   "new": false
+  },
+  {
+   "id": "Deep Work",
+   "kind": "concepts",
+   "x": -169.1,
+   "y": 869.4,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Evergreen Notes",
+   "kind": "concepts",
+   "x": 938.4,
+   "y": 390.2,
+   "deg": 6,
+   "new": true
+  },
+  {
+   "id": "Feynman Technique",
+   "kind": "concepts",
+   "x": 1559.3,
+   "y": 163.6,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Hermann Ebbinghaus",
+   "kind": "entities",
+   "x": 2460.0,
+   "y": 552.6,
+   "deg": 3,
+   "new": false
+  },
+  {
+   "id": "Matuschak on Evergreen Notes",
+   "kind": "sources",
+   "x": 822.8,
+   "y": -110.1,
+   "deg": 2,
+   "new": true
+  },
+  {
+   "id": "Niklas Luhmann",
+   "kind": "entities",
+   "x": 282.6,
+   "y": 1390.0,
+   "deg": 4,
+   "new": false
+  },
+  {
+   "id": "Notes on the Feynman Technique",
+   "kind": "sources",
+   "x": 1765.3,
+   "y": -46.3,
+   "deg": 3,
+   "new": false
+  },
+  {
+   "id": "Obsidian",
+   "kind": "entities",
+   "x": 396.4,
+   "y": 1191.1,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Piotr Wozniak",
+   "kind": "entities",
+   "x": 2405.9,
+   "y": 1136.8,
+   "deg": 3,
+   "new": false
+  },
+  {
+   "id": "Reading Notes - Deep Work",
+   "kind": "sources",
+   "x": -224.3,
+   "y": 653.0,
+   "deg": 4,
+   "new": false
+  },
+  {
+   "id": "Richard Feynman",
+   "kind": "entities",
+   "x": 1639.7,
+   "y": -310.0,
+   "deg": 2,
+   "new": false
+  },
+  {
+   "id": "Spaced Repetition",
+   "kind": "concepts",
+   "x": 2173.2,
+   "y": 734.1,
+   "deg": 7,
+   "new": false
+  },
+  {
+   "id": "SuperMemo",
+   "kind": "entities",
+   "x": 2125.7,
+   "y": 1016.4,
+   "deg": 5,
+   "new": false
+  },
+  {
+   "id": "Synthesis - Building a Thinking System",
+   "kind": "synthesis",
+   "x": 84.4,
+   "y": 1097.6,
+   "deg": 6,
+   "new": false
+  },
+  {
+   "id": "Synthesis - Learning That Sticks",
+   "kind": "synthesis",
+   "x": 2022.4,
+   "y": 530.6,
+   "deg": 6,
+   "new": false
+  },
+  {
+   "id": "The Zettelkasten in Practice",
+   "kind": "sources",
+   "x": 602.4,
+   "y": 1283.4,
+   "deg": 4,
+   "new": false
+  },
+  {
+   "id": "Zettelkasten",
+   "kind": "concepts",
+   "x": 311.1,
+   "y": 910.3,
+   "deg": 8,
+   "new": false
+  }
+ ],
+ "edges": [
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "Active Recall",
+   "new": false
+  },
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "Anki",
+   "new": false
+  },
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "Hermann Ebbinghaus",
+   "new": false
+  },
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "Piotr Wozniak",
+   "new": false
+  },
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "Spaced Repetition",
+   "new": false
+  },
+  {
+   "a": "A Primer on Spaced Repetition",
+   "b": "SuperMemo",
+   "new": false
+  },
+  {
+   "a": "Active Recall",
+   "b": "Anki",
+   "new": false
+  },
+  {
+   "a": "Active Recall",
+   "b": "Evergreen Notes",
+   "new": true
+  },
+  {
+   "a": "Active Recall",
+   "b": "Feynman Technique",
+   "new": false
+  },
+  {
+   "a": "Active Recall",
+   "b": "Notes on the Feynman Technique",
+   "new": false
+  },
+  {
+   "a": "Active Recall",
+   "b": "Spaced Repetition",
+   "new": false
+  },
+  {
+   "a": "Active Recall",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "Andy Matuschak",
+   "b": "Evergreen Notes",
+   "new": true
+  },
+  {
+   "a": "Andy Matuschak",
+   "b": "Matuschak on Evergreen Notes",
+   "new": true
+  },
+  {
+   "a": "Anki",
+   "b": "Spaced Repetition",
+   "new": false
+  },
+  {
+   "a": "Anki",
+   "b": "SuperMemo",
+   "new": false
+  },
+  {
+   "a": "Anki",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "Atomic Notes",
+   "b": "Evergreen Notes",
+   "new": true
+  },
+  {
+   "a": "Atomic Notes",
+   "b": "Obsidian",
+   "new": false
+  },
+  {
+   "a": "Atomic Notes",
+   "b": "Synthesis - Building a Thinking System",
+   "new": false
+  },
+  {
+   "a": "Atomic Notes",
+   "b": "The Zettelkasten in Practice",
+   "new": false
+  },
+  {
+   "a": "Atomic Notes",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "Attention Residue",
+   "b": "Cal Newport",
+   "new": false
+  },
+  {
+   "a": "Attention Residue",
+   "b": "Deep Work",
+   "new": false
+  },
+  {
+   "a": "Attention Residue",
+   "b": "Reading Notes - Deep Work",
+   "new": false
+  },
+  {
+   "a": "Cal Newport",
+   "b": "Deep Work",
+   "new": false
+  },
+  {
+   "a": "Cal Newport",
+   "b": "Reading Notes - Deep Work",
+   "new": false
+  },
+  {
+   "a": "Cal Newport",
+   "b": "Synthesis - Building a Thinking System",
+   "new": false
+  },
+  {
+   "a": "Deep Work",
+   "b": "Reading Notes - Deep Work",
+   "new": false
+  },
+  {
+   "a": "Deep Work",
+   "b": "Synthesis - Building a Thinking System",
+   "new": false
+  },
+  {
+   "a": "Deep Work",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "Evergreen Notes",
+   "b": "Feynman Technique",
+   "new": true
+  },
+  {
+   "a": "Evergreen Notes",
+   "b": "Matuschak on Evergreen Notes",
+   "new": true
+  },
+  {
+   "a": "Evergreen Notes",
+   "b": "Zettelkasten",
+   "new": true
+  },
+  {
+   "a": "Feynman Technique",
+   "b": "Notes on the Feynman Technique",
+   "new": false
+  },
+  {
+   "a": "Feynman Technique",
+   "b": "Richard Feynman",
+   "new": false
+  },
+  {
+   "a": "Feynman Technique",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "Hermann Ebbinghaus",
+   "b": "Spaced Repetition",
+   "new": false
+  },
+  {
+   "a": "Hermann Ebbinghaus",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "Niklas Luhmann",
+   "b": "Obsidian",
+   "new": false
+  },
+  {
+   "a": "Niklas Luhmann",
+   "b": "Synthesis - Building a Thinking System",
+   "new": false
+  },
+  {
+   "a": "Niklas Luhmann",
+   "b": "The Zettelkasten in Practice",
+   "new": false
+  },
+  {
+   "a": "Niklas Luhmann",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "Notes on the Feynman Technique",
+   "b": "Richard Feynman",
+   "new": false
+  },
+  {
+   "a": "Obsidian",
+   "b": "Synthesis - Building a Thinking System",
+   "new": false
+  },
+  {
+   "a": "Obsidian",
+   "b": "The Zettelkasten in Practice",
+   "new": false
+  },
+  {
+   "a": "Obsidian",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "Piotr Wozniak",
+   "b": "Spaced Repetition",
+   "new": false
+  },
+  {
+   "a": "Piotr Wozniak",
+   "b": "SuperMemo",
+   "new": false
+  },
+  {
+   "a": "Reading Notes - Deep Work",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "Spaced Repetition",
+   "b": "SuperMemo",
+   "new": false
+  },
+  {
+   "a": "Spaced Repetition",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "SuperMemo",
+   "b": "Synthesis - Learning That Sticks",
+   "new": false
+  },
+  {
+   "a": "Synthesis - Building a Thinking System",
+   "b": "Zettelkasten",
+   "new": false
+  },
+  {
+   "a": "The Zettelkasten in Practice",
+   "b": "Zettelkasten",
+   "new": false
+  }
+ ]
+}

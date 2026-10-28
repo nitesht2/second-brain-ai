@@ -28,9 +28,9 @@ An AI agent reads your articles, videos, PDFs and tweets, files them into a self
 
 <br>
 
-<img src="docs/screenshots/graph-view.png" alt="Obsidian graph view of a vault built by Second Brain AI: about 80 auto-linked notes on AI tools, agents and content strategy" width="640">
+<img src="docs/screenshots/hero.gif" alt="Animation: a saved article about evergreen notes is clipped with the bookmarklet, turns into a source note, a concept note and a person note with wikilinks, and the notes join the knowledge graph, connecting two clusters" width="100%">
 
-<sub>A real vault after a few weeks of clipping. Every node and link was written by the ingest agent.</sub>
+<sub>Built in code from the <a href="examples/">demo vault</a>. <a href="docs/screenshots/hero.mp4">MP4 version</a> for sharing.</sub>
 
 </div>
 
@@ -294,6 +294,10 @@ contradicts: [[Other Page]]  # optional
 sources: [path/to/source.md, ...]
 ---
 ```
+
+<img src="docs/screenshots/graph-view.png" alt="Obsidian graph view of a real vault built by Second Brain AI: about 80 auto-linked notes on AI tools, agents and content strategy" width="560">
+
+<sub>A real vault after a few weeks of clipping. Every node and link was written by the ingest agent.</sub>
 
 Three patterns differentiate this from a notes app:
 

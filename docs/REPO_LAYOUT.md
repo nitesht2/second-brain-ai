@@ -70,6 +70,10 @@ second-brain-ai/
 │   ├── KNOWLEDGE_MODEL.md                 ← Bi-temporal facts, contradictions, ADRs
 │   ├── SECURITY.md                        ← Secrets model, gateway lockdown
 │   ├── DESIGN.md                          ← Intentionally-not-included choices
+│   ├── demo/                              ← Sources for the README visuals (banner,
+│   │                                        before/after, hero film) + MOTION_NOTES.md
+│   ├── diagrams/src/                      ← D2 source for the architecture diagram
+│   ├── screenshots/                       ← Rendered README images and hero.gif/mp4
 │   ├── REPO_LAYOUT.md                     ← This file
 │   ├── VPS_DEPLOYMENT.md                  ← Long-form deployment notes
 │   └── diagrams/

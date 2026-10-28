@@ -13,6 +13,8 @@ Drop your screenshots here for the main README:
   [`docs/diagrams/src/architecture.d2`](../diagrams/src/architecture.d2); rebuild with `python3 docs/diagrams/src/build.py` (needs [D2](https://d2lang.com))
 - `banner.png` — README header and GitHub social preview (1280×640), from
   [`docs/demo/banner.html`](../demo/banner.html)
+- `hero.gif` / `hero.mp4` — 12.5s animation at the top of the README, built in code from
+  [`docs/demo/film/hero.html`](../demo/film/hero.html); re-render with `node docs/demo/film/render.js`
 - `demo.gif` — 15–20s GIF of the full flow (clip → ingest → graph update).
   Step-by-step recording guide: [`docs/demo/RECORDING.md`](../demo/RECORDING.md)
 
